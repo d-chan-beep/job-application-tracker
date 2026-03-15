@@ -1158,282 +1158,284 @@
 
 <script>
 (function() {
-
   var STOPWORDS = new Set([
     'the','a','an','and','or','but','in','on','at','to','for','of','with','by','from',
     'is','are','was','were','be','been','being','have','has','had','do','does','did',
     'will','would','could','should','may','might','shall','can','need','must','not',
     'this','that','these','those','it','its','we','our','you','your','they','their',
-    'he','she','his','her','as','if','then','than','so','such','more','also','any',
-    'all','no','up','out','about','into','over','after','before','during','while',
-    'each','other','both','only','just','very','well','new','high','good','great',
-    'strong','work','working','role','position','team','ability','knowledge','skills',
-    'skill','experience','related','required','preferred','including','include',
-    'responsible','responsibilities','ensure','maintain','provide','support','assist',
-    'within','across','between','through','per','us','i','me','my','who','which',
-    'when','where','how','what','why','s','t','re','ll','ve','d','m'
+    'i','me','my','as','so','if','up','no','all','out','any','also','just','than',
+    'per','via','etc','such','well','very','each','both','what','when','where','how',
+    'ability','able','experience','work','working','including','include','includes',
+    'required','preferred','qualifications','requirements','responsibilities','position',
+    'job','role','company','team','new','high','within','across','ensure','provide',
+    'strong','excellent','good','based','related','other','minimum','plus','years'
   ]);
 
-  var NURSING_PHRASES = [
-    'case management','utilization review','concurrent review','discharge planning',
-    'care coordination','clinical assessment','prior authorization','peer review',
-    'managed care','telephonic nursing','telephonic case','clinical documentation',
-    'disease management','population health','transition of care','length of stay',
-    'level of care','medical necessity','health coaching','chronic disease',
-    'acute care','critical care','emergency department','intensive care',
-    'patient education','quality improvement','evidence based','care plan',
-    'multidisciplinary team','interdisciplinary','patient advocacy','risk stratification',
-    'care gap','health outcomes','clinical guidelines','InterQual','Milliman','MCG'
-  ];
+  function normalize(text) {
+    return text.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  }
 
-  var NURSING_SINGLES = [
-    'RN','BSN','MSN','NP','LPN','LVN','CDE','CCM','CPHQ','ACM','CDCES',
-    'EHR','EMR','Epic','Cerner','Meditech','Allscripts','PointClickCare',
-    'ICD-10','ICD10','CPT','HCPCS','HL7','FHIR',
-    'HIPAA','HITECH',
-    'Medicare','Medicaid','Tricare','Champva','CHIP',
-    'NCQA','URAC','TJC','JCAHO','CMS',
-    'BLS','ACLS','PALS','NRP','TNCC',
-    'telehealth','telephonic','remote',
-    'appeals','denials','authorization','certification',
-    'PHQ-9','CAGE','AUDIT','SBIRT',
-    'OASIS','RAI','MDS',
-    'ventilator','IV','infusion','wound','ostomy','dialysis','oncology',
-    'behavioral','psychiatric','geriatric','pediatric','neonatal','perinatal',
-    'orthopedic','cardiovascular','neurology','pulmonary','diabetes','COPD','CHF',
-    'Python','SQL','Excel','PowerPoint','Word','Outlook','SharePoint','Tableau'
-  ];
-
-  function normalizeText(txt) {
-    return txt.toLowerCase().replace(/[^a-z0-9\s\-]/g, ' ');
+  function extractKeywords(text) {
+    var norm = normalize(text);
+    var words = norm.split(' ').filter(function(w){ return w.length > 2 && !STOPWORDS.has(w); });
+    var seen = {};
+    return words.filter(function(w){ if(seen[w]) return false; seen[w]=true; return true; });
   }
 
   function extractPhrases(text) {
-    var found = [];
-    var lower = text.toLowerCase();
-    NURSING_PHRASES.forEach(function(ph) {
-      if (lower.indexOf(ph.toLowerCase()) !== -1) {
-        found.push(ph.toLowerCase());
-      }
+    var phrases = [];
+    var patterns = [
+      /case management/gi, /utilization review/gi, /prior authorization/gi,
+      /care coordination/gi, /discharge planning/gi, /patient assessment/gi,
+      /clinical documentation/gi, /evidence[- ]based/gi, /quality improvement/gi,
+      /patient education/gi, /interdisciplinary team/gi, /care plan/gi,
+      /remote nursing/gi, /telehealth/gi, /managed care/gi, /health insurance/gi,
+      /medical necessity/gi, /concurrent review/gi, /retrospective review/gi,
+      /appeals? process/gi, /denial management/gi, /clinical review/gi,
+      /hipaa/gi, /compliance/gi, /regulatory/gi, /licensure/gi,
+      /critical thinking/gi, /time management/gi, /electronic health record/gi,
+      /epic/gi, /cerner/gi, /meditech/gi, /interqual/gi, /milliman/gi
+    ];
+    patterns.forEach(function(p){
+      var m = text.match(p);
+      if(m) m.forEach(function(v){ phrases.push(v.toLowerCase()); });
     });
-    return found;
-  }
-
-  function extractSingles(text) {
-    var found = [];
-    NURSING_SINGLES.forEach(function(kw) {
-      var pattern = new RegExp('(?<![a-zA-Z0-9\-])' + kw.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '(?![a-zA-Z0-9\-])', 'i');
-      if (pattern.test(text)) {
-        found.push(kw);
-      }
-    });
-    return found;
-  }
-
-  function extractGeneralKeywords(text) {
-    var normalized = normalizeText(text);
-    var words = normalized.split(/\s+/);
-    var counts = {};
-    words.forEach(function(w) {
-      w = w.replace(/^-+|-+$/g, '').trim();
-      if (w.length < 3) return;
-      if (STOPWORDS.has(w)) return;
-      if (/^\d+$/.test(w)) return;
-      counts[w] = (counts[w] || 0) + 1;
-    });
-    var result = [];
-    Object.keys(counts).forEach(function(k) {
-      if (counts[k] >= 1 && k.length >= 3) result.push(k);
-    });
-    return result;
-  }
-
-  function dedupeInsensitive(arr) {
     var seen = {};
-    return arr.filter(function(item) {
-      var key = item.toLowerCase();
-      if (seen[key]) return false;
-      seen[key] = true;
-      return true;
-    });
-  }
-
-  function extractKeywordsFromJob(jobText) {
-    var phrases = extractPhrases(jobText);
-    var singles = extractSingles(jobText);
-    var general = extractGeneralKeywords(jobText);
-    var all = phrases.concat(singles).concat(general);
-    return dedupeInsensitive(all);
-  }
-
-  function isInText(keyword, text) {
-    var escapedKw = keyword.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-    var pattern = new RegExp('(?<![a-zA-Z0-9\-])' + escapedKw + '(?![a-zA-Z0-9\-])', 'i');
-    return pattern.test(text);
+    return phrases.filter(function(p){ if(seen[p]) return false; seen[p]=true; return true; });
   }
 
   function analyzeKeywords(resumeText, jobText) {
-    var jobKeywords = extractKeywordsFromJob(jobText);
+    var jobKw = extractKeywords(jobText);
+    var jobPhrases = extractPhrases(jobText);
+    var resumeNorm = normalize(resumeText);
+    var resumeLower = resumeText.toLowerCase();
     var matched = [];
     var missing = [];
-    jobKeywords.forEach(function(kw) {
-      if (isInText(kw, resumeText)) {
-        matched.push(kw);
-      } else {
-        missing.push(kw);
+    jobPhrases.forEach(function(p){
+      if(resumeLower.indexOf(p) > -1) matched.push(p);
+      else missing.push(p);
+    });
+    jobKw.forEach(function(k){
+      if(matched.indexOf(k)===-1 && missing.indexOf(k)===-1){
+        if(resumeNorm.indexOf(k) > -1) matched.push(k);
+        else missing.push(k);
       }
     });
-    matched.sort();
-    missing.sort();
-    return { matched: matched, missing: missing };
+    return { matched: matched.slice(0,20), missing: missing.slice(0,15) };
   }
 
-  function generateTailoredResume(resumeText, missingKeywords) {
-    if (missingKeywords.length === 0) {
-      return resumeText;
-    }
-
-    var lines = resumeText.split('\n');
-    var output = [];
-    var injected = false;
-    var summaryPatterns = [/summary/i, /objective/i, /profile/i, /overview/i, /about/i];
-    var summaryIdx = -1;
-
-    for (var i = 0; i < lines.length; i++) {
+  function extractName(text) {
+    var lines = text.trim().split('\n');
+    for(var i=0; i<Math.min(5,lines.length); i++){
       var line = lines[i].trim();
-      for (var p = 0; p < summaryPatterns.length; p++) {
-        if (summaryPatterns[p].test(line) && line.length < 60) {
-          summaryIdx = i;
-          break;
-        }
-      }
-      if (summaryIdx !== -1) break;
-    }
-
-    var phraseKws = missingKeywords.filter(function(k) { return k.indexOf(' ') !== -1; });
-    var singleKws = missingKeywords.filter(function(k) { return k.indexOf(' ') === -1; });
-
-    for (var i = 0; i < lines.length; i++) {
-      output.push(lines[i]);
-
-      if (!injected && summaryIdx !== -1 && i === summaryIdx) {
-        var insertIdx = i + 1;
-        while (insertIdx < lines.length && lines[insertIdx].trim() === '') {
-          output.push(lines[insertIdx]);
-          insertIdx++;
-          i++;
-        }
-        if (insertIdx < lines.length) {
-          var summaryContent = lines[insertIdx];
-          if (phraseKws.length > 0) {
-            var addPhrases = phraseKws.slice(0, Math.min(3, phraseKws.length)).join(', ');
-            summaryContent = summaryContent.trimEnd() + ' Experienced in ' + addPhrases + '.';
-          }
-          output.push(summaryContent);
-          i = insertIdx;
-          injected = true;
-        }
+      if(!line) continue;
+      if(/^[A-Z][a-z]+(\s+[A-Z][a-z]+){1,3}$/.test(line)) return line;
+      if(/^[A-Z]{2,}(\s+[A-Z]{2,})+$/.test(line)){
+        return line.split(' ').map(function(w){ return w.charAt(0)+w.slice(1).toLowerCase(); }).join(' ');
       }
     }
-
-    var skillsPatterns = [/skills/i, /competencies/i, /qualifications/i, /proficiencies/i, /technologies/i, /tools/i, /certifications/i];
-    var finalText = output.join('\n');
-    var finalLines = finalText.split('\n');
-    var result = [];
-    var skillsInjected = false;
-
-    for (var j = 0; j < finalLines.length; j++) {
-      result.push(finalLines[j]);
-      if (!skillsInjected) {
-        var tl = finalLines[j].trim();
-        var isSkillHead = false;
-        for (var sp = 0; sp < skillsPatterns.length; sp++) {
-          if (skillsPatterns[sp].test(tl) && tl.length < 80) {
-            isSkillHead = true;
-            break;
-          }
-        }
-        if (isSkillHead) {
-          var nextJ = j + 1;
-          while (nextJ < finalLines.length && finalLines[nextJ].trim() === '') {
-            result.push(finalLines[nextJ]);
-            nextJ++;
-            j++;
-          }
-          if (singleKws.length > 0) {
-            var addSingles = singleKws.slice(0, Math.min(6, singleKws.length)).join(' | ');
-            result.push(addSingles);
-            skillsInjected = true;
-          }
-        }
-      }
-    }
-
-    if (!skillsInjected && missingKeywords.length > 0) {
-      var chunk = missingKeywords.slice(0, Math.min(8, missingKeywords.length));
-      result.push('');
-      result.push('ADDITIONAL RELEVANT SKILLS & KEYWORDS');
-      result.push(chunk.join(' | '));
-    }
-
-    result.push('');
-    result.push('-- Tailored for position. Keywords incorporated based on job posting analysis. --');
-
-    return result.join('\n');
+    return 'Candidate Name';
   }
 
-  function renderBadges(containerId, emptyId, items, color, bg) {
+  function extractCreds(text) {
+    var creds = [];
+    var pats = [/\b(RN|LPN|LVN|NP|CRNA|CNM|CNS|CNA|PA-C|BSN|MSN|ADN|DNP|PhD)\b/g,
+      /\b(ACLS|BLS|PALS|NRP|TNCC|CCRN|CEN|CNOR|CMSRN|ONC|CWCN|CCM|ACM)\b/g];
+    pats.forEach(function(p){ var m; while((m=p.exec(text))!==null){ if(creds.indexOf(m[1])===-1) creds.push(m[1]); }});
+    return creds;
+  }
+
+  function extractContact(text) {
+    var email = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-z]{2,}/);
+    var phone = text.match(/(\(\d{3}\)\s*\d{3}[-.]\d{4}|\d{3}[-.]\d{3}[-.]\d{4})/);
+    var parts = [];
+    if(email) parts.push(email[0]);
+    if(phone) parts.push(phone[0]);
+    return parts.join(' | ');
+  }
+
+  function extractYears(text) {
+    var m = text.match(/(\d+)\+?\s*years?\s*(?:of\s*)?(?:experience|exp|nursing)/i);
+    if(m) return parseInt(m[1]);
+    var years = text.match(/\b(19|20)(\d{2})\b/g);
+    if(years && years.length >= 2){
+      var nums = years.map(function(y){ return parseInt(y); });
+      var span = new Date().getFullYear() - Math.min.apply(null, nums);
+      if(span >= 1 && span <= 45) return span;
+    }
+    return 5;
+  }
+
+  function extractJobTitle(text) {
+    var patterns = [
+      /(?:position|title|role)[:\s]+([^\n]+)/i,
+      /^([A-Z][^\n]{5,60})$/m
+    ];
+    for(var i=0; i<patterns.length; i++){
+      var m = text.match(patterns[i]);
+      if(m) return m[1].trim().replace(/[\-|]+$/, '').trim();
+    }
+    return 'Healthcare Professional';
+  }
+
+  function extractCompany(text) {
+    var patterns = [
+      /(?:company|organization|employer|at)[:\s]+([^\n]+)/i,
+      /(?:about|join)\s+([A-Z][A-Za-z\s&]+?)(?:\.|,|\n)/
+    ];
+    for(var i=0; i<patterns.length; i++){
+      var m = text.match(patterns[i]);
+      if(m) return m[1].trim();
+    }
+    return 'the organization';
+  }
+
+  function extractExperience(text) {
+    var blocks = [];
+    var lines = text.split('\n');
+    var current = null;
+    for(var i=0; i<lines.length; i++){
+      var line = lines[i].trim();
+      if(!line) continue;
+      if(/^[\-\*\u2022]\s/.test(line)){
+        if(current) current.bullets.push(line.replace(/^[\-\*\u2022]\s*/, ''));
+      } else if(/\d{4}/.test(line) && /\b(RN|nurse|manager|coordinator|specialist|director|supervisor|staff)/i.test(line)){
+        if(current) blocks.push(current);
+        current = { title: line, bullets: [] };
+      }
+    }
+    if(current) blocks.push(current);
+    return blocks;
+  }
+
+  function buildResume(resumeText, jobText, analysis) {
+    var name = extractName(resumeText);
+    var creds = extractCreds(resumeText);
+    var contact = extractContact(resumeText);
+    var yrs = extractYears(resumeText);
+    var jobTitle = extractJobTitle(jobText);
+    var company = extractCompany(jobText);
+    var missing = analysis.missing;
+    var matched = analysis.matched;
+    var allKey = matched.concat(missing);
+
+    var credStr = creds.length > 0 ? ', ' + creds.join(', ') : '';
+    var header = name + credStr;
+    if(contact) header += '\n' + contact;
+
+    var summary = 'PROFESSIONAL SUMMARY\n' +
+      'Dedicated and results-driven healthcare professional with ' + yrs + '+ years of clinical and ' +
+      'administrative nursing experience. Proven expertise in ' +
+      (allKey.slice(0,3).join(', ') || 'patient care, clinical assessment, and care coordination') +
+      '. Seeking to leverage comprehensive background in ' +
+      (allKey.slice(3,5).join(' and ') || 'healthcare delivery and quality improvement') +
+      ' as a ' + jobTitle + ' with ' + company +
+      '. Known for exceptional clinical judgment, strong communication skills, and commitment to ' +
+      'evidence-based practice and positive patient outcomes.';
+
+    var competencies = 'CORE COMPETENCIES';
+    var compList = allKey.slice(0, 12);
+    if(compList.length < 6){
+      var defaults = ['Patient Assessment','Care Planning','Clinical Documentation','Quality Improvement','Patient Education','Interdisciplinary Collaboration'];
+      defaults.forEach(function(d){ if(compList.length < 12 && compList.indexOf(d.toLowerCase())===-1) compList.push(d); });
+    }
+    var compRows = [];
+    for(var i=0; i<compList.length; i+=3){
+      var row = compList.slice(i, i+3).map(function(c){
+        return c.split(' ').map(function(w){ return w.charAt(0).toUpperCase()+w.slice(1); }).join(' ');
+      });
+      compRows.push(row.join('  |  '));
+    }
+    competencies += '\n' + compRows.join('\n');
+
+    var expBlocks = extractExperience(resumeText);
+    var experience = 'PROFESSIONAL EXPERIENCE';
+    if(expBlocks.length > 0){
+      expBlocks.forEach(function(block){
+        experience += '\n\n' + block.title;
+        block.bullets.forEach(function(b){
+          experience += '\n- ' + b;
+        });
+        if(missing.length > 0 && block.bullets.length > 0){
+          var addSkill = missing.shift();
+          if(addSkill){
+            experience += '\n- Demonstrated proficiency in ' +
+              addSkill.split(' ').map(function(w){ return w.charAt(0).toUpperCase()+w.slice(1); }).join(' ') +
+              ' through daily clinical practice and process improvement initiatives';
+          }
+        }
+      });
+    } else {
+      experience += '\n\nHealthcare Professional\n' +
+        '- Provided comprehensive patient care across diverse clinical settings\n' +
+        '- Managed complex patient caseloads with attention to quality outcomes\n' +
+        '- Collaborated with interdisciplinary teams to develop and implement care plans\n' +
+        '- Maintained accurate clinical documentation in compliance with regulatory standards';
+      if(missing.length > 0){
+        missing.slice(0,3).forEach(function(s){
+          experience += '\n- Applied ' + s + ' principles to optimize patient outcomes and operational efficiency';
+        });
+      }
+    }
+
+    var education = 'EDUCATION & CERTIFICATIONS';
+    var eduLines = [];
+    if(creds.indexOf('DNP') > -1) eduLines.push('Doctor of Nursing Practice (DNP)');
+    else if(creds.indexOf('MSN') > -1) eduLines.push('Master of Science in Nursing (MSN)');
+    else if(creds.indexOf('BSN') > -1) eduLines.push('Bachelor of Science in Nursing (BSN)');
+    else if(creds.indexOf('ADN') > -1) eduLines.push('Associate Degree in Nursing (ADN)');
+    if(eduLines.length === 0) eduLines.push('Nursing Degree');
+    var certCreds = creds.filter(function(c){ return ['RN','LPN','NP','CRNA','CNM'].indexOf(c) === -1 &&
+      ['BSN','MSN','ADN','DNP','PhD'].indexOf(c) === -1; });
+    if(certCreds.length > 0) eduLines.push('Certifications: ' + certCreds.join(', '));
+    if(creds.indexOf('RN') > -1) eduLines.push('Registered Nurse (RN) - Active License');
+    education += '\n' + eduLines.join('\n');
+
+    var additional = 'ADDITIONAL SKILLS';
+    var addSkills = ['Proficient in electronic health record (EHR) systems',
+      'Strong verbal and written communication skills',
+      'HIPAA compliance and patient privacy standards',
+      'Remote work technology and virtual care platforms'];
+    missing.forEach(function(s){
+      addSkills.push(s.split(' ').map(function(w){ return w.charAt(0).toUpperCase()+w.slice(1); }).join(' '));
+    });
+    additional += '\n' + addSkills.slice(0,6).map(function(s){ return '- ' + s; }).join('\n');
+
+    return header + '\n\n' + summary + '\n\n' + competencies + '\n\n' + experience + '\n\n' + education + '\n\n' + additional;
+  }
+
+  function renderBadges(containerId, emptyId, keywords, color, bg) {
     var container = document.getElementById(containerId);
-    var emptyEl = document.getElementById(emptyId);
-    container.innerHTML = '';
-    if (items.length === 0) {
-      emptyEl.style.display = 'block';
+    var empty = document.getElementById(emptyId);
+    if(!container) return;
+    if(keywords.length === 0){
+      container.innerHTML = '';
+      if(empty) empty.style.display = 'block';
       return;
     }
-    emptyEl.style.display = 'none';
-    items.forEach(function(kw) {
-      var badge = document.createElement('span');
-      badge.textContent = kw;
-      badge.style.cssText = [
-        'display:inline-block',
-        'padding:3px 10px',
-        'border-radius:12px',
-        'font-size:0.78rem',
-        'font-weight:600',
-        'background:' + bg,
-        'color:' + color,
-        'border:1px solid ' + color
-      ].join(';');
-      container.appendChild(badge);
-    });
+    if(empty) empty.style.display = 'none';
+    container.innerHTML = keywords.map(function(k){
+      return '<span style="display:inline-block;margin:3px 4px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;color:'+color+';background:'+bg+';border:1px solid '+color+'22;">'+k+'</span>';
+    }).join('');
   }
 
   function showError(msg) {
     var el = document.getElementById('resume-error');
-    el.textContent = msg;
-    el.style.display = 'block';
+    if(el){ el.textContent = msg; el.style.display = 'block'; }
   }
-
   function hideError() {
-    document.getElementById('resume-error').style.display = 'none';
+    var el = document.getElementById('resume-error');
+    if(el) el.style.display = 'none';
   }
-
   function setLoading(on) {
     var btn = document.getElementById('resume-generate-btn');
-    var spinner = document.getElementById('resume-spinner');
-    var btnText = document.getElementById('resume-btn-text');
-    if (on) {
-      btn.disabled = true;
-      btn.style.background = '#93c5fd';
-      btn.style.cursor = 'not-allowed';
-      spinner.style.display = 'inline-block';
-      btnText.textContent = 'Analyzing...';
+    var loading = document.getElementById('resume-loading');
+    if(on){
+      if(btn){ btn.disabled = true; btn.style.background = '#93c5fd'; btn.textContent = 'Generating...'; }
+      if(loading) loading.style.display = 'flex';
     } else {
-      btn.disabled = false;
-      btn.style.background = '#2563eb';
-      btn.style.cursor = 'pointer';
-      spinner.style.display = 'none';
-      btnText.textContent = 'Generate Tailored Resume';
+      if(btn){ btn.disabled = false; btn.style.background = '#2563eb'; btn.textContent = 'Generate Tailored Resume'; }
+      if(loading) loading.style.display = 'none';
     }
   }
 
@@ -1442,11 +1444,11 @@
     var resumeText = document.getElementById('resume-input').value.trim();
     var jobText = document.getElementById('jobpost-input').value.trim();
 
-    if (!resumeText) {
+    if(!resumeText){
       showError('Please paste your resume text before generating.');
       return;
     }
-    if (!jobText) {
+    if(!jobText){
       showError('Please paste the job posting text before generating.');
       return;
     }
@@ -1459,16 +1461,10 @@
       try {
         var analysis = analyzeKeywords(resumeText, jobText);
 
-        renderBadges(
-          'matched-keywords', 'matched-empty',
-          analysis.matched, '#15803d', '#f0fdf4'
-        );
-        renderBadges(
-          'missing-keywords', 'missing-empty',
-          analysis.missing, '#dc2626', '#fef2f2'
-        );
+        renderBadges('matched-keywords', 'matched-empty', analysis.matched, '#15803d', '#f0fdf4');
+        renderBadges('missing-keywords', 'missing-empty', analysis.missing, '#dc2626', '#fef2f2');
 
-        var tailored = generateTailoredResume(resumeText, analysis.missing);
+        var tailored = buildResume(resumeText, jobText, analysis);
         document.getElementById('tailored-resume-output').value = tailored;
         document.getElementById('resume-output').style.display = 'block';
         document.getElementById('resume-output').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1481,38 +1477,25 @@
 
   document.getElementById('resume-copy-btn').addEventListener('click', function() {
     var ta = document.getElementById('tailored-resume-output');
-    var confirm = document.getElementById('resume-copy-confirm');
-    if (!ta.value) return;
-    try {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(ta.value).then(function() {
-          confirm.style.display = 'block';
-          setTimeout(function() { confirm.style.display = 'none'; }, 2500);
-        });
-      } else {
-        ta.select();
-        document.execCommand('copy');
-        confirm.style.display = 'block';
-        setTimeout(function() { confirm.style.display = 'none'; }, 2500);
-      }
-    } catch(e) {
+    var confirmEl = document.getElementById('resume-copy-confirm');
+    if(!ta.value) return;
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(ta.value).then(function(){
+        confirmEl.style.display = 'inline';
+        setTimeout(function(){ confirmEl.style.display = 'none'; }, 2200);
+      });
+    } else {
       ta.select();
+      document.execCommand('copy');
+      confirmEl.style.display = 'inline';
+      setTimeout(function(){ confirmEl.style.display = 'none'; }, 2200);
     }
   });
 
-  document.getElementById('resume-input').addEventListener('focus', function() {
-    this.style.borderColor = '#2563eb';
-  });
-  document.getElementById('resume-input').addEventListener('blur', function() {
-    this.style.borderColor = '#d1d5db';
-  });
-  document.getElementById('jobpost-input').addEventListener('focus', function() {
-    this.style.borderColor = '#2563eb';
-  });
-  document.getElementById('jobpost-input').addEventListener('blur', function() {
-    this.style.borderColor = '#d1d5db';
-  });
-
+  document.getElementById('resume-input').addEventListener('focus', function(){ this.style.borderColor = '#2563eb'; });
+  document.getElementById('resume-input').addEventListener('blur', function(){ this.style.borderColor = '#d1d5db'; });
+  document.getElementById('jobpost-input').addEventListener('focus', function(){ this.style.borderColor = '#2563eb'; });
+  document.getElementById('jobpost-input').addEventListener('blur', function(){ this.style.borderColor = '#d1d5db'; });
 })();
 </script>
 
@@ -1636,7 +1619,7 @@ function clExtractSpecialties(resumeText) {
 function clExtractCompany(jobText) {
   if (!jobText) return 'your facility';
   var patterns = [
-    /(?:at|with|for|join)\s+([A-Z][A-Za-z0-9&'.,\s-]{2,50}?)(?:\s*[-â|,]|\s+is\s|\s+are\s|\s*\n)/,
+    /(?:at|with|for|join)\s+([A-Z][A-Za-z0-9&'.,\s-]{2,50}?)(?:\s*[-Ã¢ÂÂ|,]|\s+is\s|\s+are\s|\s*\n)/,
     /^([A-Z][A-Za-z0-9&'.,\s-]{2,60})\s*(?:is\s+(?:seeking|looking|hiring)|has\s+an)/m,
     /(?:Hospital|Medical Center|Health System|Healthcare|Clinic|Physicians|Nursing|Rehab|Center)[^\n]*/i,
     /Company[:\s]+([^\n]+)/i,
@@ -1983,92 +1966,162 @@ Thank you very much for your time. I look forward to hearing from you."</div>
   </div>
 
   <script>
-    function fuCopyText(elId, btnId) {
-      var text = document.getElementById(elId).innerText;
-      var btn = document.getElementById(btnId);
-      if (navigator.clipboard && window.isSecureContext) {
-        navigator.clipboard.writeText(text).then(function() {
-          btn.textContent = 'Copied!';
-          btn.classList.add('copied');
-          setTimeout(function(){ btn.textContent = elId.indexOf('phone') > -1 ? 'Copy Phone Script' : 'Copy Email Template'; btn.classList.remove('copied'); }, 2000);
-        });
-      } else {
-        var ta = document.createElement('textarea');
-        ta.value = text;
-        ta.style.position = 'fixed';
-        ta.style.opacity = '0';
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-        btn.textContent = 'Copied!';
-        btn.classList.add('copied');
-        setTimeout(function(){ btn.textContent = elId.indexOf('phone') > -1 ? 'Copy Phone Script' : 'Copy Email Template'; btn.classList.remove('copied'); }, 2000);
-      }
-    }
-
-    function fuLoadDueApps() {
-      var container = document.getElementById('fu-due-list');
-      if (!container) return;
-      var raw = localStorage.getItem('jobApps');
+    function fuLoadAllApps() {
       var apps = [];
-      try { apps = raw ? JSON.parse(raw) : []; } catch(e) { apps = []; }
-      var today = new Date();
-      today.setHours(0,0,0,0);
-      var due = apps.filter(function(a) {
-        if (!a.followUpDate) return false;
-        if ((a.followUpSent || '').toLowerCase() === 'yes') return false;
-        var d = new Date(a.followUpDate);
-        d.setHours(0,0,0,0);
-        return d <= today;
-      });
-      if (due.length === 0) {
-        container.innerHTML = '<p class="fu-due-empty">No applications are currently due for follow-up. Check back after your scheduled follow-up dates.</p>';
+      try { apps = JSON.parse(localStorage.getItem('jobApps')) || []; } catch(e) {}
+      var container = document.getElementById('fu-due-list');
+      if(!container) return;
+      
+      if(apps.length === 0){
+        container.innerHTML = '<div style="text-align:center;padding:40px 20px;color:#94a3b8;"><div style="font-size:28px;margin-bottom:10px;">ð</div><div style="font-size:15px;font-weight:600;">No Applications Yet</div><div style="font-size:13px;margin-top:4px;">Add applications in the Dashboard tab to track follow-ups here.</div></div>';
         return;
       }
-      var html = '';
-      due.forEach(function(app, idx) {
-        var origIdx = apps.indexOf(app);
-        html += '<div class="fu-app-card">';
-        html += '<div class="fu-app-info">';
-        html += '<div class="fu-app-company">' + (app.company || 'Unknown Company') + '</div>';
-        html += '<div class="fu-app-role">' + (app.role || app.position || 'Position not listed') + '</div>';
-        html += '<div class="fu-app-date">Follow-up due: ' + (app.followUpDate || 'N/A') + '</div>';
-        html += '</div>';
-        html += '<button class="fu-mark-btn" onclick="fuMarkSent(' + origIdx + ')">Mark Follow-Up Sent</button>';
-        html += '</div>';
+
+      var today = new Date();
+      today.setHours(0,0,0,0);
+      var todayStr = today.toISOString().split('T')[0];
+
+      // Sort: overdue first, then today, then future, then no date
+      apps.sort(function(a,b){
+        var dateA = a.followUpDate || '';
+        var dateB = b.followUpDate || '';
+        if(!dateA && !dateB) return 0;
+        if(!dateA) return 1;
+        if(!dateB) return -1;
+        return dateA.localeCompare(dateB);
       });
-      container.innerHTML = html;
+
+      var html = '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
+      html += '<thead><tr style="background:#f1f5f9;border-bottom:2px solid #e2e8f0;">';
+      html += '<th style="text-align:left;padding:10px 12px;color:#64748b;font-weight:600;">Company</th>';
+      html += '<th style="text-align:left;padding:10px 12px;color:#64748b;font-weight:600;">Role</th>';
+      html += '<th style="text-align:left;padding:10px 12px;color:#64748b;font-weight:600;">Applied</th>';
+      html += '<th style="text-align:left;padding:10px 12px;color:#64748b;font-weight:600;">Follow-Up Date</th>';
+      html += '<th style="text-align:center;padding:10px 12px;color:#64748b;font-weight:600;">Status</th>';
+      html += '<th style="text-align:center;padding:10px 12px;color:#64748b;font-weight:600;">Action</th>';
+      html += '</tr></thead><tbody>';
+
+      apps.forEach(function(app, idx){
+        var fuDate = app.followUpDate || '';
+        var sent = app.followUpSent || false;
+        var rowBg = '#fff';
+        var statusBadge = '';
+
+        if(sent){
+          statusBadge = '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;background:#dcfce7;color:#166534;">Sent â</span>';
+          rowBg = '#f8fdf9';
+        } else if(!fuDate){
+          statusBadge = '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;background:#f1f5f9;color:#94a3b8;">No Date Set</span>';
+        } else {
+          var fDate = new Date(fuDate + 'T00:00:00');
+          var diffDays = Math.floor((fDate - today) / (1000*60*60*24));
+          if(diffDays < 0){
+            statusBadge = '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;background:#fde2e2;color:#991b1b;">Overdue (' + Math.abs(diffDays) + 'd)</span>';
+            rowBg = '#fef2f2';
+          } else if(diffDays === 0){
+            statusBadge = '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;background:#fef3c7;color:#92400e;">Due Today</span>';
+            rowBg = '#fffbeb';
+          } else if(diffDays <= 3){
+            statusBadge = '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;background:#e0e7ff;color:#3730a3;">In ' + diffDays + ' day' + (diffDays > 1 ? 's' : '') + '</span>';
+          } else {
+            statusBadge = '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;background:#f1f5f9;color:#64748b;">In ' + diffDays + ' days</span>';
+          }
+        }
+
+        var actionBtn = '';
+        if(sent){
+          actionBtn = '<button onclick="fuUndoSent(' + idx + ')" style="padding:4px 12px;font-size:11px;border:1px solid #e2e8f0;background:#fff;border-radius:4px;cursor:pointer;color:#64748b;" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'#fff\'">Undo</button>';
+        } else {
+          actionBtn = '<button onclick="fuMarkSent(' + idx + ')" style="padding:4px 12px;font-size:11px;border:none;background:#2563eb;color:#fff;border-radius:4px;cursor:pointer;font-weight:600;" onmouseover="this.style.background=\'#1d4ed8\'" onmouseout="this.style.background=\'#2563eb\'">Mark Sent</button>';
+        }
+
+        var formattedApplied = app.dateApplied || 'N/A';
+        var formattedFU = fuDate ? fuFormatDate(fuDate) : 'Not set';
+
+        html += '<tr style="background:' + rowBg + ';border-bottom:1px solid #f0f3f9;">';
+        html += '<td style="padding:10px 12px;font-weight:600;color:#1e293b;">' + (app.company || 'Unknown') + '</td>';
+        html += '<td style="padding:10px 12px;color:#475569;">' + (app.role || 'Unknown') + '</td>';
+        html += '<td style="padding:10px 12px;color:#64748b;font-size:12px;">' + formattedApplied + '</td>';
+        html += '<td style="padding:10px 12px;color:#475569;">' + formattedFU + '</td>';
+        html += '<td style="padding:10px 12px;text-align:center;">' + statusBadge + '</td>';
+        html += '<td style="padding:10px 12px;text-align:center;">' + actionBtn + '</td>';
+        html += '</tr>';
+      });
+
+      html += '</tbody></table>';
+
+      // Summary stats
+      var overdue = 0, dueToday = 0, upcoming = 0, sent = 0, noDate = 0;
+      apps.forEach(function(app){
+        if(app.followUpSent){ sent++; return; }
+        if(!app.followUpDate){ noDate++; return; }
+        var fDate = new Date(app.followUpDate + 'T00:00:00');
+        var diff = Math.floor((fDate - today) / (1000*60*60*24));
+        if(diff < 0) overdue++;
+        else if(diff === 0) dueToday++;
+        else upcoming++;
+      });
+
+      var summary = '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;">';
+      summary += '<div style="flex:1;min-width:100px;background:#fef2f2;border-radius:8px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:700;color:#991b1b;">' + overdue + '</div><div style="font-size:11px;color:#b91c1c;font-weight:600;">Overdue</div></div>';
+      summary += '<div style="flex:1;min-width:100px;background:#fffbeb;border-radius:8px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:700;color:#92400e;">' + dueToday + '</div><div style="font-size:11px;color:#b45309;font-weight:600;">Due Today</div></div>';
+      summary += '<div style="flex:1;min-width:100px;background:#eff6ff;border-radius:8px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:700;color:#1d4ed8;">' + upcoming + '</div><div style="font-size:11px;color:#2563eb;font-weight:600;">Upcoming</div></div>';
+      summary += '<div style="flex:1;min-width:100px;background:#f0fdf4;border-radius:8px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:700;color:#166534;">' + sent + '</div><div style="font-size:11px;color:#16a34a;font-weight:600;">Sent</div></div>';
+      summary += '</div>';
+
+      container.innerHTML = summary + html;
+    }
+
+    function fuFormatDate(dateStr) {
+      if(!dateStr) return '';
+      var parts = dateStr.split('-');
+      if(parts.length !== 3) return dateStr;
+      var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      return months[parseInt(parts[1])-1] + ' ' + parseInt(parts[2]) + ', ' + parts[0];
     }
 
     function fuMarkSent(idx) {
-      var raw = localStorage.getItem('jobApps');
       var apps = [];
-      try { apps = raw ? JSON.parse(raw) : []; } catch(e) { apps = []; }
-      if (apps[idx]) {
-        apps[idx].followUpSent = 'Yes';
+      try { apps = JSON.parse(localStorage.getItem('jobApps')) || []; } catch(e) {}
+      if(apps[idx]){
+        apps[idx].followUpSent = true;
         localStorage.setItem('jobApps', JSON.stringify(apps));
-        if (window.loadDashboard) { try { window.loadDashboard(); } catch(e) {} }
-        if (window.renderTable) { try { window.renderTable(); } catch(e) {} }
+        fuLoadAllApps();
+        // Trigger dashboard refresh if it exists
+        if(typeof loadApps === 'function') loadApps();
       }
-      fuLoadDueApps();
     }
 
-    (function() {
-      fuLoadDueApps();
-      var tabBtn = document.querySelector('[data-tab="followup"], [onclick*="followup"]');
-      if (tabBtn) {
-        tabBtn.addEventListener('click', function() {
-          setTimeout(fuLoadDueApps, 50);
-        });
+    function fuUndoSent(idx) {
+      var apps = [];
+      try { apps = JSON.parse(localStorage.getItem('jobApps')) || []; } catch(e) {}
+      if(apps[idx]){
+        apps[idx].followUpSent = false;
+        localStorage.setItem('jobApps', JSON.stringify(apps));
+        fuLoadAllApps();
+        if(typeof loadApps === 'function') loadApps();
       }
-      document.addEventListener('click', function(e) {
-        if (e.target && (e.target.dataset.tab === 'followup' || (e.target.getAttribute && e.target.getAttribute('onclick') && e.target.getAttribute('onclick').indexOf('followup') > -1))) {
-          setTimeout(fuLoadDueApps, 80);
-        }
-      });
-    })();
-  </script>
+    }
+
+    // Listen for tab switches to refresh data
+    document.addEventListener('click', function(e){
+      if(e.target && e.target.getAttribute && e.target.getAttribute('data-tab') === 'follow-up'){
+        setTimeout(fuLoadAllApps, 100);
+      }
+    });
+
+    // Also listen for storage events (cross-tab sync)
+    window.addEventListener('storage', function(e){
+      if(e.key === 'jobApps') fuLoadAllApps();
+    });
+
+    // Auto-initialize when page loads
+    if(document.readyState === 'loading'){
+      document.addEventListener('DOMContentLoaded', fuLoadAllApps);
+    } else {
+      fuLoadAllApps();
+    }
+</script>
 </div>
 
 
@@ -2140,134 +2193,169 @@ Thank you very much for your time. I look forward to hearing from you."</div>
 
   <script>
     var ipRemoteTips = [
-      { label: 'Technology', tip: 'Test your camera, microphone, and internet connection at least 30 minutes before the interview starts.' },
-      { label: 'Background', tip: 'Use a clean, neutral background. A plain wall or tidy bookshelf is ideal. Avoid cluttered or distracting spaces.' },
-      { label: 'Lighting', tip: 'Position a light source in front of your face, not behind you. Natural light from a window works well.' },
-      { label: 'Eye Contact', tip: 'Look directly at the camera when speaking, not at your own image on the screen. This simulates natural eye contact.' },
-      { label: 'Appearance', tip: 'Dress professionally from the waist up. Wear what you would to an in-person interview. Avoid busy patterns or bright colors.' },
-      { label: 'Notes', tip: 'Keep a notepad and key talking points nearby, just outside camera view. Use them as a brief reference, not a script.' },
-      { label: 'Environment', tip: 'Choose a quiet room and inform others in your household. Silence your phone and close unnecessary browser tabs.' },
-      { label: 'Backup Plan', tip: 'Have the interviewer contact number ready. If your connection drops, call them immediately to continue the interview.' }
+      { label: 'Technology', tip: 'Test your camera, microphone, and internet connection at least 30 minutes before the interview. Have a backup device ready.' },
+      { label: 'Environment', tip: 'Choose a quiet, well-lit space with a neutral background. Eliminate potential interruptions from pets, family, or notifications.' },
+      { label: 'Eye Contact', tip: 'Look directly at your camera (not the screen) when speaking. Place a small sticker near your camera as a reminder.' },
+      { label: 'Body Language', tip: 'Sit upright, smile naturally, and use hand gestures sparingly. Nod to show engagement when the interviewer speaks.' },
+      { label: 'Notes', tip: 'Keep brief notes nearby but avoid reading from a script. Having the job posting open is acceptable for reference.' },
+      { label: 'Follow-Up', tip: 'Send a thank-you email within 24 hours. Reference specific topics discussed to demonstrate engagement and interest.' }
     ];
 
-    var ipRemoteTalkingBase = [
-      'Demonstrated ability to manage a full patient caseload independently, without direct on-site supervision',
-      'Strong written and verbal communication skills developed through telehealth, documentation systems, and interdisciplinary coordination',
-      'Proficient with electronic health record platforms and remote communication tools used in clinical and case management settings',
-      'Proven track record of maintaining accurate, timely documentation in compliance with regulatory and payer requirements',
-      'Ability to prioritize competing patient needs and deadlines in a fast-paced, asynchronous work environment',
-      'Experience coordinating care across multiple providers, facilities, and payers with minimal administrative support'
-    ];
+    function ipExtractTitle(text) {
+      var m = text.match(/(?:title|position|role)[:\s]+([^\n]+)/i);
+      if(m) return m[1].trim();
+      var lines = text.trim().split('\n');
+      for(var i=0; i<Math.min(5,lines.length); i++){
+        var line = lines[i].trim();
+        if(line.length > 5 && line.length < 80 && /nurse|rn|case|review|clinical|health|care|manager|coordinator|specialist/i.test(line))
+          return line;
+      }
+      return 'this position';
+    }
 
-    var ipBehavioral = [
-      'Tell me about a time you had to manage a difficult patient situation remotely. How did you handle communication and follow-through?',
-      'Describe a situation where you had to advocate for a patient whose care plan was not being followed by the care team.',
-      'Give an example of when you had to juggle multiple high-priority cases at once. How did you organize your workload?'
-    ];
+    function ipExtractCompany(text) {
+      var m = text.match(/(?:company|organization|at|about)[:\s]+([A-Z][A-Za-z\s&]+?)(?:\.|,|\n)/);
+      if(m) return m[1].trim();
+      return 'the organization';
+    }
 
-    var ipSituational = [
-      'If a patient's condition changed significantly and you could not reach their physician, what steps would you take?',
-      'How would you handle a situation where a payer denies authorization for a service you believe is medically necessary?',
-      'A team member consistently misses deadlines that affect your caseload. How do you address this professionally?'
-    ];
-
-    function ipGetKeywords(text) {
-      var lower = text.toLowerCase();
+    function ipGetKeywords(posting) {
+      var lower = posting.toLowerCase();
       var found = [];
       var checks = [
-        { key: 'case management', label: 'case management' },
-        { key: 'utilization review', label: 'utilization review' },
-        { key: 'utilization management', label: 'utilization management' },
-        { key: 'disease management', label: 'disease management' },
-        { key: 'care coordination', label: 'care coordination' },
-        { key: 'discharge planning', label: 'discharge planning' },
-        { key: 'remote', label: 'remote work' },
-        { key: 'telehealth', label: 'telehealth' },
-        { key: 'electronic health record', label: 'EHR systems' },
-        { key: 'ehr', label: 'EHR systems' },
-        { key: 'prior authorization', label: 'prior authorization' },
-        { key: 'icd', label: 'ICD coding' },
-        { key: 'cpt', label: 'CPT coding' },
-        { key: 'medicare', label: 'Medicare regulations' },
-        { key: 'medicaid', label: 'Medicaid regulations' },
-        { key: 'managed care', label: 'managed care' },
-        { key: 'interdisciplinary', label: 'interdisciplinary collaboration' },
-        { key: 'documentation', label: 'clinical documentation' },
-        { key: 'patient education', label: 'patient education' },
-        { key: 'transitional care', label: 'transitional care' },
-        { key: 'chronic', label: 'chronic disease management' },
-        { key: 'behavioral health', label: 'behavioral health integration' },
-        { key: 'oncology', label: 'oncology nursing' },
-        { key: 'critical care', label: 'critical care experience' },
-        { key: 'icu', label: 'ICU clinical background' },
-        { key: 'home health', label: 'home health' },
-        { key: 'payer', label: 'payer relations' },
-        { key: 'appeals', label: 'denial and appeals management' },
-        { key: 'compliance', label: 'regulatory compliance' },
-        { key: 'quality improvement', label: 'quality improvement' },
-        { key: 'ccm', label: 'CCM certification' },
-        { key: 'acm', label: 'ACM certification' },
-        { key: 'interqual', label: 'InterQual criteria' },
-        { key: 'milliman', label: 'Milliman criteria' },
-        { key: 'productivity', label: 'productivity metrics' },
-        { key: 'metrics', label: 'performance metrics' },
-        { key: 'leadership', label: 'clinical leadership' },
-        { key: 'team lead', label: 'team lead responsibilities' }
+        {key:'case management', kw:'case management'},
+        {key:'utilization review', kw:'utilization review'},
+        {key:'prior auth', kw:'prior authorization'},
+        {key:'care coordination', kw:'care coordination'},
+        {key:'discharge planning', kw:'discharge planning'},
+        {key:'concurrent review', kw:'concurrent review'},
+        {key:'interqual', kw:'InterQual'},
+        {key:'milliman', kw:'Milliman criteria'},
+        {key:'appeal', kw:'appeals/denials'},
+        {key:'remote', kw:'remote work'},
+        {key:'telehealth', kw:'telehealth'},
+        {key:'managed care', kw:'managed care'},
+        {key:'insurance', kw:'health insurance'},
+        {key:'ehr', kw:'EHR systems'},
+        {key:'electronic health', kw:'EHR systems'},
+        {key:'epic', kw:'Epic'},
+        {key:'cerner', kw:'Cerner'},
+        {key:'hipaa', kw:'HIPAA compliance'},
+        {key:'quality', kw:'quality improvement'},
+        {key:'patient education', kw:'patient education'},
+        {key:'assessment', kw:'clinical assessment'},
+        {key:'documentation', kw:'clinical documentation'},
+        {key:'evidence', kw:'evidence-based practice'},
+        {key:'interdisciplin', kw:'interdisciplinary collaboration'},
+        {key:'critical think', kw:'critical thinking'},
+        {key:'communication', kw:'communication'},
+        {key:'time management', kw:'time management'},
+        {key:'licensure', kw:'multi-state licensure'},
+        {key:'compact', kw:'compact nursing license'}
       ];
-      checks.forEach(function(c) {
-        if (lower.indexOf(c.key) > -1) found.push(c.label);
+      var seen = {};
+      checks.forEach(function(c){
+        if(lower.indexOf(c.key) > -1 && !seen[c.kw]){
+          found.push(c.kw);
+          seen[c.kw] = true;
+        }
       });
       return found;
     }
 
-    function ipBuildTechnical(keywords, postingText) {
-      var lower = postingText.toLowerCase();
+    function ipBuildQuestions(keywords, posting, title) {
       var questions = [];
-      if (lower.indexOf('utilization') > -1 || lower.indexOf('prior auth') > -1) {
-        questions.push('Walk me through your process for completing a utilization review and submitting a prior authorization request.');
-      }
-      if (lower.indexOf('case manag') > -1) {
-        questions.push('How do you structure your caseload each day to ensure every patient receives appropriate and timely attention?');
-      }
-      if (lower.indexOf('discharge') > -1) {
-        questions.push('Describe your approach to discharge planning for a complex patient with multiple comorbidities and limited social support.');
-      }
-      if (lower.indexOf('ehr') > -1 || lower.indexOf('electronic health record') > -1) {
-        questions.push('Which EHR and case management platforms have you used, and how quickly do you adapt to new systems?');
-      }
-      if (lower.indexOf('interqual') > -1 || lower.indexOf('milliman') > -1) {
-        questions.push('How do you apply InterQual or Milliman criteria when reviewing a case, and how do you handle borderline situations?');
-      }
-      if (lower.indexOf('appeal') > -1 || lower.indexOf('denial') > -1) {
-        questions.push('Walk me through how you have successfully overturned a payer denial. What documentation and arguments did you use?');
-      }
-      if (lower.indexOf('telehealth') > -1 || lower.indexOf('remote') > -1) {
-        questions.push('What strategies do you use to build rapport and conduct thorough clinical assessments when working with patients remotely?');
-      }
-      if (lower.indexOf('chronic') > -1 || lower.indexOf('disease management') > -1) {
-        questions.push('Describe your experience managing patients with multiple chronic conditions. How do you coordinate care across specialties?');
-      }
-      if (questions.length < 3) {
-        questions.push('How do you ensure that your clinical documentation meets both regulatory standards and organizational expectations?');
-        questions.push('What is your approach to identifying patients at high risk for readmission, and what interventions do you prioritize?');
-        questions.push('How do you stay current with changes in clinical guidelines, payer policies, and regulatory requirements?');
-      }
-      return questions.slice(0, 4);
-    }
 
-    function ipBuildTalkingPoints(keywords, postingText) {
-      var points = ipRemoteTalkingBase.slice();
-      var lower = postingText.toLowerCase();
-      if (lower.indexOf('ccm') > -1 || lower.indexOf('acm') > -1 || lower.indexOf('certification') > -1) {
-        points.unshift('Holds or is actively pursuing professional certification (CCM, ACM, or equivalent), demonstrating commitment to the specialty');
+      // Behavioral questions (always include)
+      questions.push({
+        category: 'Behavioral Questions (Use STAR Method)',
+        items: [
+          {
+            q: 'Tell me about a time you had to manage a complex patient case with multiple stakeholders. What was your approach?',
+            a: 'In my role as a case management RN, I managed a patient with CHF, diabetes, and limited social support who needed coordinated care across cardiology, endocrinology, and home health. I organized a multidisciplinary conference call, created a unified care plan, and established weekly check-ins. The patient had zero readmissions over the following 90 days, and the care team adopted my coordination model for similar cases.'
+          },
+          {
+            q: 'Describe a situation where you disagreed with a physician\'s care plan. How did you handle it?',
+            a: 'I reviewed a case where the attending planned to discharge a post-surgical patient without home health referral despite documented fall risk and limited mobility. I gathered relevant assessment data, cited evidence-based guidelines for post-operative care, and presented my concerns professionally during rounds. The physician agreed to add home health services, and the patient recovered safely at home without complications.'
+          },
+          {
+            q: 'Give an example of when you had to prioritize multiple urgent tasks. How did you decide what came first?',
+            a: 'During a high-census period, I had three concurrent reviews due, two appeals to submit, and a patient family requesting an immediate care conference. I triaged by deadline and clinical urgency -- submitted the time-sensitive appeal first, completed the reviews using a structured checklist approach, then scheduled the family conference for the same afternoon. I communicated transparently with all parties about timelines, and everything was completed within the required windows.'
+          }
+        ]
+      });
+
+      // Role-specific questions based on keywords
+      var roleQs = [];
+      var lower = posting.toLowerCase();
+
+      if(lower.indexOf('case manag') > -1){
+        roleQs.push({
+          q: 'Walk me through how you would manage a typical day with a caseload of 25-30 patients.',
+          a: 'I start each morning by reviewing my caseload dashboard, flagging patients with upcoming discharge dates, pending authorizations, or overdue assessments. I prioritize new admissions and acute status changes first, then work through scheduled reviews. I block time for documentation and phone calls with providers and families. I use a tracking spreadsheet alongside the EHR to ensure nothing falls through the cracks, and I end each day updating notes and preparing my priority list for the next morning.'
+        });
       }
-      if (lower.indexOf('leadership') > -1 || lower.indexOf('team lead') > -1) {
-        points.unshift('Experience mentoring junior staff and leading clinical workflows in a remote or distributed team environment');
+      if(lower.indexOf('utilization') > -1 || lower.indexOf('concurrent') > -1){
+        roleQs.push({
+          q: 'How do you determine medical necessity when reviewing a concurrent stay?',
+          a: 'I apply the organization\'s approved criteria set -- typically InterQual or Milliman -- and compare the patient\'s current clinical status against the criteria for continued stay. I review the most recent vital signs, lab results, treatment plan, and physician notes. If the case is borderline, I consult with the attending physician for additional clinical rationale before making a determination. I always document my clinical reasoning thoroughly to support the decision.'
+        });
       }
-      if (lower.indexOf('quality') > -1 || lower.indexOf('metrics') > -1) {
-        points.push('Consistent achievement of productivity and quality metrics in previous remote roles, with a self-directed work style');
+      if(lower.indexOf('remote') > -1 || lower.indexOf('work from home') > -1 || lower.indexOf('virtual') > -1){
+        roleQs.push({
+          q: 'What strategies do you use to stay productive and connected while working remotely?',
+          a: 'I maintain a dedicated home office with reliable technology and treat my remote workday with the same structure as an on-site role. I use time-blocking for focused review work, keep my calendar visible to the team for collaboration, and proactively communicate via Teams or Slack throughout the day. I schedule regular check-ins with my supervisor and participate actively in virtual team meetings. I have found that over-communicating in a remote setting builds trust and keeps workflows smooth.'
+        });
       }
-      return points.slice(0, 6);
+      if(lower.indexOf('appeal') > -1 || lower.indexOf('denial') > -1){
+        roleQs.push({
+          q: 'Describe your process for handling a clinical denial and preparing an appeal.',
+          a: 'When I receive a denial, I first review the denial rationale and compare it against the patient\'s clinical documentation. I identify gaps between what the payer reviewed and the full clinical picture. I then gather supporting documentation -- physician notes, lab results, imaging, and any relevant clinical guidelines. I draft the appeal letter with a clear clinical narrative, citing specific criteria, and submit it within the required timeframe. I track the appeal through resolution and follow up proactively.'
+        });
+      }
+      if(lower.indexOf('telehealth') > -1){
+        roleQs.push({
+          q: 'How do you build rapport with patients during telehealth interactions?',
+          a: 'I start every telehealth visit by confirming the patient can see and hear me clearly, then I introduce myself warmly and explain the purpose of our call. I maintain eye contact with the camera, use the patient\'s name frequently, and actively listen by summarizing what they share. I allow extra time for questions since patients may feel less comfortable over video. I also follow up with written summaries so patients have a reference after our session.'
+        });
+      }
+
+      if(roleQs.length > 0){
+        questions.push({
+          category: 'Role-Specific Clinical Questions',
+          items: roleQs
+        });
+      }
+
+      // Technical questions
+      var techQs = [
+        {
+          q: 'Which EHR and case management platforms have you worked with, and how do you adapt to new systems?',
+          a: 'I have experience with Epic, Cerner, and various proprietary case management platforms. When transitioning to a new system, I focus on learning the core workflows first -- documentation, order review, and reporting. I complete all available training modules, shadow experienced users, and create my own quick-reference guides. I typically reach proficiency within 2-3 weeks and full comfort within the first month.'
+        },
+        {
+          q: 'How do you ensure accuracy and compliance in your clinical documentation?',
+          a: 'I follow a structured documentation approach: I capture the clinical assessment, criteria applied, rationale for my determination, the plan of action, and any communication with providers or payers. I review my notes before finalizing to ensure they are objective, factual, and complete. I stay current on regulatory changes and participate in compliance training. I also perform periodic self-audits of my documentation to maintain quality.'
+        }
+      ];
+      questions.push({
+        category: 'Technical & Systems Questions',
+        items: techQs
+      });
+
+      // Questions to ask the interviewer
+      questions.push({
+        category: 'Questions to Ask the Interviewer',
+        items: [
+          { q: 'What does the typical caseload look like for this role, and how is work distributed across the team?', a: '' },
+          { q: 'How does the organization support continuing education and professional development for remote nurses?', a: '' },
+          { q: 'What technology platforms and tools does the team use for daily workflow and communication?', a: '' },
+          { q: 'How is performance measured in this role, and what does success look like in the first 90 days?', a: '' },
+          { q: 'Can you describe the team culture and how remote employees stay connected?', a: '' }
+        ]
+      });
+
+      return questions;
     }
 
     function ipGenerate() {
@@ -2276,7 +2364,7 @@ Thank you very much for your time. I look forward to hearing from you."</div>
       var loading = document.getElementById('ip-loading');
       var output = document.getElementById('ip-output');
 
-      if (!posting) {
+      if(!posting){
         document.getElementById('ip-job-posting').style.borderColor = '#c0392b';
         setTimeout(function(){ document.getElementById('ip-job-posting').style.borderColor = '#c5cde0'; }, 2000);
         return;
@@ -2288,83 +2376,95 @@ Thank you very much for your time. I look forward to hearing from you."</div>
 
       setTimeout(function() {
         var keywords = ipGetKeywords(posting);
-        var technicalQs = ipBuildTechnical(keywords, posting);
-        var talkingPts = ipBuildTalkingPoints(keywords, posting);
+        var title = ipExtractTitle(posting);
+        var company = ipExtractCompany(posting);
+        var questions = ipBuildQuestions(keywords, posting, title);
 
-        var qHtml = '';
-        qHtml += '<div class="ip-q-category">Behavioral (STAR-format recommended)</div>';
-        qHtml += '<ul class="ip-q-list">';
-        ipBehavioral.slice(0, 3).forEach(function(q){ qHtml += '<li>' + q + '</li>'; });
-        qHtml += '</ul>';
-        qHtml += '<div class="ip-q-category">Technical / Clinical</div>';
-        qHtml += '<ul class="ip-q-list">';
-        technicalQs.forEach(function(q){ qHtml += '<li>' + q + '</li>'; });
-        qHtml += '</ul>';
-        qHtml += '<div class="ip-q-category">Situational</div>';
-        qHtml += '<ul class="ip-q-list">';
-        ipSituational.slice(0, 3).forEach(function(q){ qHtml += '<li>' + q + '</li>'; });
-        qHtml += '</ul>';
+        // Build Questions HTML
+        var qHtml = '<div style="margin-bottom:8px;font-size:13px;color:#64748b;">Tailored for: <strong style="color:#1a2540;">' + title + '</strong> at <strong style="color:#1a2540;">' + company + '</strong></div>';
+        questions.forEach(function(section){
+          qHtml += '<div class="ip-q-category">' + section.category + '</div>';
+          if(section.category === 'Questions to Ask the Interviewer'){
+            qHtml += '<ul class="ip-q-list">';
+            section.items.forEach(function(item){ qHtml += '<li>' + item.q + '</li>'; });
+            qHtml += '</ul>';
+          } else {
+            section.items.forEach(function(item, idx){
+              qHtml += '<div style="margin:10px 0;padding:12px;background:#f8fafc;border-radius:6px;border-left:3px solid #2563eb;">';
+              qHtml += '<div style="font-size:13px;font-weight:700;color:#1e293b;margin-bottom:6px;">Q' + (idx+1) + ': ' + item.q + '</div>';
+              if(item.a){
+                qHtml += '<div style="font-size:13px;color:#475569;line-height:1.6;"><strong style="color:#16a34a;">Sample Answer:</strong> ' + item.a + '</div>';
+              }
+              qHtml += '</div>';
+            });
+          }
+        });
         document.getElementById('ip-questions-output').innerHTML = qHtml;
 
-        var talkHtml = '';
-        talkingPts.forEach(function(pt){ talkHtml += '<li>' + pt + '</li>'; });
-        document.getElementById('ip-talking-output').innerHTML = talkHtml;
+        // Build Talking Points HTML
+        var tHtml = '<div class="ip-q-category">Key Themes to Emphasize</div><ul class="ip-q-list">';
+        if(keywords.length > 0){
+          keywords.forEach(function(kw){
+            tHtml += '<li>Highlight your experience with <strong>' + kw + '</strong> using specific examples and metrics when possible</li>';
+          });
+        } else {
+          tHtml += '<li>Emphasize your clinical assessment and critical thinking skills</li>';
+          tHtml += '<li>Highlight your experience with patient care coordination</li>';
+          tHtml += '<li>Discuss your documentation accuracy and compliance track record</li>';
+        }
+        tHtml += '</ul>';
+        tHtml += '<div class="ip-q-category">STAR Method Reminder</div>';
+        tHtml += '<ul class="ip-q-list">';
+        tHtml += '<li><strong>S</strong>ituation - Set the scene with context</li>';
+        tHtml += '<li><strong>T</strong>ask - Describe your specific responsibility</li>';
+        tHtml += '<li><strong>A</strong>ction - Explain what you did step by step</li>';
+        tHtml += '<li><strong>R</strong>esult - Share the measurable outcome</li>';
+        tHtml += '</ul>';
+        document.getElementById('ip-talking-output').innerHTML = tHtml;
 
-        var tipsHtml = '';
+        // Build Tips HTML
+        var tipHtml = '';
         ipRemoteTips.forEach(function(t){
-          tipsHtml += '<div class="ip-tip-item"><span class="ip-tip-label">' + t.label + '</span>' + t.tip + '</div>';
+          tipHtml += '<div style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid #f0f3f9;">';
+          tipHtml += '<span style="background:#2563eb;color:#fff;font-size:11px;font-weight:700;border-radius:4px;padding:3px 8px;white-space:nowrap;">' + t.label + '</span>';
+          tipHtml += '<span style="font-size:13px;color:#3a4a6b;line-height:1.5;">' + t.tip + '</span>';
+          tipHtml += '</div>';
         });
-        document.getElementById('ip-tips-output').innerHTML = tipsHtml;
+        document.getElementById('ip-tips-output').innerHTML = tipHtml;
 
         loading.style.display = 'none';
         output.style.display = 'block';
         btn.disabled = false;
+        output.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 1500);
     }
 
     function ipCopyAll() {
+      var qEl = document.getElementById('ip-questions-output');
+      var tEl = document.getElementById('ip-talking-output');
+      var tipEl = document.getElementById('ip-tips-output');
+      var text = 'INTERVIEW PREP\n\n' +
+        'QUESTIONS & ANSWERS\n' + (qEl ? qEl.innerText : '') + '\n\n' +
+        'TALKING POINTS\n' + (tEl ? tEl.innerText : '') + '\n\n' +
+        'REMOTE INTERVIEW TIPS\n' + (tipEl ? tipEl.innerText : '');
       var btn = document.getElementById('ip-copy-all-btn');
-      var text = '';
-      text += 'INTERVIEW PREP MATERIALS\n';
-      text += '========================\n\n';
-      text += 'LIKELY INTERVIEW QUESTIONS\n';
-      text += '--------------------------\n';
-      text += 'Behavioral:\n';
-      ipBehavioral.slice(0, 3).forEach(function(q, i){ text += (i+1) + '. ' + q + '\n'; });
-      text += '\nTechnical / Clinical:\n';
-      var posting = document.getElementById('ip-job-posting').value.trim();
-      var technicalQs = ipBuildTechnical(ipGetKeywords(posting), posting);
-      technicalQs.forEach(function(q, i){ text += (i+1) + '. ' + q + '\n'; });
-      text += '\nSituational:\n';
-      ipSituational.slice(0, 3).forEach(function(q, i){ text += (i+1) + '. ' + q + '\n'; });
-      text += '\nSUGGESTED TALKING POINTS\n';
-      text += '------------------------\n';
-      var talkingPts = ipBuildTalkingPoints(ipGetKeywords(posting), posting);
-      talkingPts.forEach(function(pt){ text += '- ' + pt + '\n'; });
-      text += '\nREMOTE INTERVIEW TIPS\n';
-      text += '---------------------\n';
-      ipRemoteTips.forEach(function(t){ text += t.label + ': ' + t.tip + '\n'; });
-      if (navigator.clipboard && window.isSecureContext) {
-        navigator.clipboard.writeText(text).then(function() {
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(function(){
           btn.textContent = 'Copied!';
-          btn.classList.add('copied');
-          setTimeout(function(){ btn.textContent = 'Copy All Prep Materials'; btn.classList.remove('copied'); }, 2000);
+          btn.style.background = '#dcfce7';
+          btn.style.color = '#166534';
+          setTimeout(function(){ btn.textContent = 'Copy All to Clipboard'; btn.style.background = ''; btn.style.color = ''; }, 2200);
         });
       } else {
         var ta = document.createElement('textarea');
-        ta.value = text;
-        ta.style.position = 'fixed';
-        ta.style.opacity = '0';
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
+        ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select(); document.execCommand('copy');
         document.body.removeChild(ta);
         btn.textContent = 'Copied!';
-        btn.classList.add('copied');
-        setTimeout(function(){ btn.textContent = 'Copy All Prep Materials'; btn.classList.remove('copied'); }, 2000);
+        setTimeout(function(){ btn.textContent = 'Copy All to Clipboard'; }, 2200);
       }
     }
-  </script>
+</script>
 </div>
 </main>
 </div>
