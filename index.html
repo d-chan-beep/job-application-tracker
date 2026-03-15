@@ -478,134 +478,29 @@
     </nav>
 
     <!-- TAB PANELS (populated by subsequent parts) -->
-    <main id="tab-content">
-      <div class="tab-panel active" id="panel-dashboard"></div>
-      <div class="tab-panel" id="panel-resume"></div>
-      <div class="tab-panel" id="panel-coverletter"></div>
-      <div class="tab-panel" id="panel-followup"></div>
-      <div class="tab-panel" id="panel-interview"></div>
-    </main>
-
-  </div><!-- /#app-wrapper -->
-
-  <script>
-    (function () {
-      'use strict';
-
-      /* ---- PASSWORD PROTECTION ---- */
-      const PASS_HASH = "QzAqKjMzMTQwNTU1";
-      const SESSION_KEY = 'jat_auth';
-
-      const overlay    = document.getElementById('password-overlay');
-      const appWrapper = document.getElementById('app-wrapper');
-      const passInput  = document.getElementById('pass-input');
-      const passSubmit = document.getElementById('pass-submit');
-      const passError  = document.getElementById('pass-error');
-      const passToggle = document.getElementById('pass-toggle');
-      const logoutBtn  = document.getElementById('logout-btn');
-
-      function showApp() {
-        overlay.style.display = 'none';
-        appWrapper.style.display = 'flex';
-      }
-
-      function showOverlay() {
-        overlay.style.display = 'flex';
-        appWrapper.style.display = 'none';
-        passInput.value = '';
-        passError.style.display = 'none';
-      }
-
-      function checkPassword() {
-        const val = passInput.value;
-        if (!val) return;
-        if (btoa(val) === PASS_HASH) {
-          sessionStorage.setItem(SESSION_KEY, '1');
-          passError.style.display = 'none';
-          showApp();
-        } else {
-          passError.style.display = 'block';
-          passInput.value = '';
-          passInput.focus();
-          passInput.classList.add('shake');
-          setTimeout(function () {
-            passInput.classList.remove('shake');
-          }, 400);
-        }
-      }
-
-      /* Check session on load */
-      if (sessionStorage.getItem(SESSION_KEY) === '1') {
-        showApp();
-      }
-
-      passSubmit.addEventListener('click', checkPassword);
-      passInput.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') checkPassword();
-      });
-
-      /* Toggle password visibility */
-      passToggle.addEventListener('click', function () {
-        var t = passInput.type === 'password' ? 'text' : 'password';
-        passInput.type = t;
-        document.getElementById('eye-icon').innerHTML = t === 'text'
-          ? '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"></path><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"></path><line x1="1" y1="1" x2="23" y2="23"></line>'
-          : '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>';
-      });
-
-      /* Logout */
-      logoutBtn.addEventListener('click', function () {
-        sessionStorage.removeItem(SESSION_KEY);
-        showOverlay();
-      });
-
-      /* ---- TAB NAVIGATION ---- */
-      var tabBtns   = document.querySelectorAll('.tab-btn');
-      var tabPanels = document.querySelectorAll('.tab-panel');
-
-      function activateTab(targetTab) {
-        tabBtns.forEach(function (btn) {
-          btn.classList.toggle('active', btn.dataset.tab === targetTab);
-        });
-        tabPanels.forEach(function (panel) {
-          panel.classList.toggle('active', panel.id === 'panel-' + targetTab);
-        });
-      }
-
-      tabBtns.forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          activateTab(btn.dataset.tab);
-        });
-      });
-
-      /* Expose activateTab globally for other parts */
-      window.activateTab = activateTab;
-
-    })();
-  </script>
-
-<main id="app-content" style="max-width:1200px;margin:0 auto;padding:20px;">
-<div id="tab-dashboard" class="tab-content active">
+    
+    <main>
+      <div class="tab-panel active" id="panel-dashboard">
 <style>
-#tab-dashboard {
+#panel-dashboard {
   font-family: Arial, sans-serif;
   padding: 20px;
   background: #f5f7fa;
   min-height: 100vh;
   box-sizing: border-box;
 }
-#tab-dashboard .dash-header {
+#panel-dashboard .dash-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
 }
-#tab-dashboard .dash-header h2 {
+#panel-dashboard .dash-header h2 {
   margin: 0;
   font-size: 1.4rem;
   color: #1a1a2e;
 }
-#tab-dashboard .btn-add {
+#panel-dashboard .btn-add {
   background: #2563eb;
   color: #fff;
   border: none;
@@ -616,16 +511,16 @@
   font-weight: 600;
   letter-spacing: 0.02em;
 }
-#tab-dashboard .btn-add:hover {
+#panel-dashboard .btn-add:hover {
   background: #1d4ed8;
 }
-#tab-dashboard .metrics-row {
+#panel-dashboard .metrics-row {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
   margin-bottom: 24px;
 }
-#tab-dashboard .metric-card {
+#panel-dashboard .metric-card {
   background: #fff;
   border-radius: 8px;
   box-shadow: 0 1px 4px rgba(0,0,0,0.08);
@@ -634,7 +529,7 @@
   flex: 1 1 90px;
   text-align: center;
 }
-#tab-dashboard .metric-card .metric-label {
+#panel-dashboard .metric-card .metric-label {
   font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -642,35 +537,35 @@
   margin-bottom: 6px;
   color: #555;
 }
-#tab-dashboard .metric-card .metric-count {
+#panel-dashboard .metric-card .metric-count {
   font-size: 2rem;
   font-weight: 800;
   line-height: 1;
 }
-#tab-dashboard .metric-total .metric-count { color: #1a1a2e; }
-#tab-dashboard .metric-applied .metric-count { color: #2563eb; }
-#tab-dashboard .metric-interview .metric-count { color: #d97706; }
-#tab-dashboard .metric-offer .metric-count { color: #16a34a; }
-#tab-dashboard .metric-rejected .metric-count { color: #dc2626; }
-#tab-dashboard .metric-withdrawn .metric-count { color: #6b7280; }
-#tab-dashboard .table-wrap {
+#panel-dashboard .metric-total .metric-count { color: #1a1a2e; }
+#panel-dashboard .metric-applied .metric-count { color: #2563eb; }
+#panel-dashboard .metric-interview .metric-count { color: #d97706; }
+#panel-dashboard .metric-offer .metric-count { color: #16a34a; }
+#panel-dashboard .metric-rejected .metric-count { color: #dc2626; }
+#panel-dashboard .metric-withdrawn .metric-count { color: #6b7280; }
+#panel-dashboard .table-wrap {
   background: #fff;
   border-radius: 8px;
   box-shadow: 0 1px 4px rgba(0,0,0,0.08);
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
-#tab-dashboard table {
+#panel-dashboard table {
   width: 100%;
   border-collapse: collapse;
   min-width: 900px;
   font-size: 0.875rem;
 }
-#tab-dashboard thead tr {
+#panel-dashboard thead tr {
   background: #f1f5f9;
   border-bottom: 2px solid #e2e8f0;
 }
-#tab-dashboard thead th {
+#panel-dashboard thead th {
   padding: 11px 13px;
   text-align: left;
   font-weight: 700;
@@ -680,19 +575,19 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
-#tab-dashboard tbody tr {
+#panel-dashboard tbody tr {
   border-bottom: 1px solid #e9edf2;
   transition: background 0.12s;
 }
-#tab-dashboard tbody tr:hover {
+#panel-dashboard tbody tr:hover {
   background: #f8fafc;
 }
-#tab-dashboard tbody td {
+#panel-dashboard tbody td {
   padding: 10px 13px;
   color: #1f2937;
   vertical-align: middle;
 }
-#tab-dashboard .badge {
+#panel-dashboard .badge {
   display: inline-block;
   padding: 3px 10px;
   border-radius: 12px;
@@ -700,18 +595,18 @@
   font-weight: 700;
   letter-spacing: 0.03em;
 }
-#tab-dashboard .badge-applied { background: #dbeafe; color: #1e40af; }
-#tab-dashboard .badge-interview { background: #fef3c7; color: #92400e; }
-#tab-dashboard .badge-offer { background: #dcfce7; color: #14532d; }
-#tab-dashboard .badge-rejected { background: #fee2e2; color: #991b1b; }
-#tab-dashboard .badge-withdrawn { background: #f3f4f6; color: #374151; }
-#tab-dashboard .overdue-tag {
+#panel-dashboard .badge-applied { background: #dbeafe; color: #1e40af; }
+#panel-dashboard .badge-interview { background: #fef3c7; color: #92400e; }
+#panel-dashboard .badge-offer { background: #dcfce7; color: #14532d; }
+#panel-dashboard .badge-rejected { background: #fee2e2; color: #991b1b; }
+#panel-dashboard .badge-withdrawn { background: #f3f4f6; color: #374151; }
+#panel-dashboard .overdue-tag {
   color: #dc2626;
   font-weight: 700;
   font-size: 0.72rem;
   margin-left: 5px;
 }
-#tab-dashboard .action-link {
+#panel-dashboard .action-link {
   background: none;
   border: none;
   cursor: pointer;
@@ -721,11 +616,11 @@
   border-radius: 4px;
   text-decoration: underline;
 }
-#tab-dashboard .action-edit { color: #2563eb; }
-#tab-dashboard .action-edit:hover { color: #1d4ed8; }
-#tab-dashboard .action-delete { color: #dc2626; margin-left: 6px; }
-#tab-dashboard .action-delete:hover { color: #991b1b; }
-#tab-dashboard .notes-cell {
+#panel-dashboard .action-edit { color: #2563eb; }
+#panel-dashboard .action-edit:hover { color: #1d4ed8; }
+#panel-dashboard .action-delete { color: #dc2626; margin-left: 6px; }
+#panel-dashboard .action-delete:hover { color: #991b1b; }
+#panel-dashboard .notes-cell {
   max-width: 160px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -733,7 +628,7 @@
   color: #6b7280;
   font-size: 0.82rem;
 }
-#tab-dashboard .modal-overlay {
+#panel-dashboard .modal-overlay {
   display: none;
   position: fixed;
   inset: 0;
@@ -742,10 +637,10 @@
   align-items: center;
   justify-content: center;
 }
-#tab-dashboard .modal-overlay.open {
+#panel-dashboard .modal-overlay.open {
   display: flex;
 }
-#tab-dashboard .modal-box {
+#panel-dashboard .modal-box {
   background: #fff;
   border-radius: 10px;
   box-shadow: 0 8px 32px rgba(0,0,0,0.18);
@@ -757,22 +652,22 @@
   position: relative;
   box-sizing: border-box;
 }
-#tab-dashboard .modal-box h3 {
+#panel-dashboard .modal-box h3 {
   margin: 0 0 20px 0;
   font-size: 1.15rem;
   color: #1a1a2e;
 }
-#tab-dashboard .form-row {
+#panel-dashboard .form-row {
   display: flex;
   gap: 14px;
   margin-bottom: 14px;
 }
-#tab-dashboard .form-group {
+#panel-dashboard .form-group {
   flex: 1;
   display: flex;
   flex-direction: column;
 }
-#tab-dashboard .form-group label {
+#panel-dashboard .form-group label {
   font-size: 0.78rem;
   font-weight: 700;
   color: #374151;
@@ -780,9 +675,9 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
-#tab-dashboard .form-group input,
-#tab-dashboard .form-group select,
-#tab-dashboard .form-group textarea {
+#panel-dashboard .form-group input,
+#panel-dashboard .form-group select,
+#panel-dashboard .form-group textarea {
   padding: 7px 10px;
   border: 1px solid #d1d5db;
   border-radius: 5px;
@@ -794,23 +689,23 @@
   width: 100%;
   box-sizing: border-box;
 }
-#tab-dashboard .form-group input:focus,
-#tab-dashboard .form-group select:focus,
-#tab-dashboard .form-group textarea:focus {
+#panel-dashboard .form-group input:focus,
+#panel-dashboard .form-group select:focus,
+#panel-dashboard .form-group textarea:focus {
   border-color: #2563eb;
   background: #fff;
 }
-#tab-dashboard .form-group textarea {
+#panel-dashboard .form-group textarea {
   resize: vertical;
   min-height: 64px;
 }
-#tab-dashboard .modal-actions {
+#panel-dashboard .modal-actions {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
   margin-top: 18px;
 }
-#tab-dashboard .btn-save {
+#panel-dashboard .btn-save {
   background: #2563eb;
   color: #fff;
   border: none;
@@ -820,8 +715,8 @@
   cursor: pointer;
   font-weight: 600;
 }
-#tab-dashboard .btn-save:hover { background: #1d4ed8; }
-#tab-dashboard .btn-cancel {
+#panel-dashboard .btn-save:hover { background: #1d4ed8; }
+#panel-dashboard .btn-cancel {
   background: #f3f4f6;
   color: #374151;
   border: 1px solid #d1d5db;
@@ -831,17 +726,17 @@
   cursor: pointer;
   font-weight: 600;
 }
-#tab-dashboard .btn-cancel:hover { background: #e5e7eb; }
-#tab-dashboard .empty-msg {
+#panel-dashboard .btn-cancel:hover { background: #e5e7eb; }
+#panel-dashboard .empty-msg {
   text-align: center;
   color: #9ca3af;
   padding: 30px 0;
   font-size: 0.95rem;
 }
 @media (max-width: 600px) {
-  #tab-dashboard { padding: 10px; }
-  #tab-dashboard .form-row { flex-direction: column; gap: 0; }
-  #tab-dashboard .modal-box { padding: 16px 10px 14px 10px; }
+  #panel-dashboard { padding: 10px; }
+  #panel-dashboard .form-row { flex-direction: column; gap: 0; }
+  #panel-dashboard .modal-box { padding: 16px 10px 14px 10px; }
 }
 </style>
 
@@ -1200,7 +1095,7 @@
 })();
 </script>
 </div>
-<div id="tab-resume" class="tab-content" style="display:none;">
+      <div class="tab-panel" id="panel-resume">
   <div style="max-width:1100px;margin:0 auto;padding:20px;">
     <h2 style="font-size:1.4rem;font-weight:700;margin:0 0 6px 0;color:#1e293b;">Resume Tool</h2>
     <p style="margin:0 0 20px 0;color:#64748b;font-size:0.9rem;">Paste your resume and a job posting to identify keyword gaps and generate a tailored version.</p>
@@ -1253,375 +1148,7 @@
     </div>
   </div>
 </div>
-
-<style>
-@keyframes resumeSpin {
-  to { transform: rotate(360deg); }
-}
-#resume-generate-btn:hover { background:#1d4ed8; }
-#resume-copy-btn:hover { background:#e2e8f0; }
-</style>
-
-<script>
-(function() {
-
-  var STOPWORDS = new Set([
-    'the','a','an','and','or','but','in','on','at','to','for','of','with','by','from',
-    'is','are','was','were','be','been','being','have','has','had','do','does','did',
-    'will','would','could','should','may','might','shall','can','need','must','not',
-    'this','that','these','those','it','its','we','our','you','your','they','their',
-    'he','she','his','her','as','if','then','than','so','such','more','also','any',
-    'all','no','up','out','about','into','over','after','before','during','while',
-    'each','other','both','only','just','very','well','new','high','good','great',
-    'strong','work','working','role','position','team','ability','knowledge','skills',
-    'skill','experience','related','required','preferred','including','include',
-    'responsible','responsibilities','ensure','maintain','provide','support','assist',
-    'within','across','between','through','per','us','i','me','my','who','which',
-    'when','where','how','what','why','s','t','re','ll','ve','d','m'
-  ]);
-
-  var NURSING_PHRASES = [
-    'case management','utilization review','concurrent review','discharge planning',
-    'care coordination','clinical assessment','prior authorization','peer review',
-    'managed care','telephonic nursing','telephonic case','clinical documentation',
-    'disease management','population health','transition of care','length of stay',
-    'level of care','medical necessity','health coaching','chronic disease',
-    'acute care','critical care','emergency department','intensive care',
-    'patient education','quality improvement','evidence based','care plan',
-    'multidisciplinary team','interdisciplinary','patient advocacy','risk stratification',
-    'care gap','health outcomes','clinical guidelines','InterQual','Milliman','MCG'
-  ];
-
-  var NURSING_SINGLES = [
-    'RN','BSN','MSN','NP','LPN','LVN','CDE','CCM','CPHQ','ACM','CDCES',
-    'EHR','EMR','Epic','Cerner','Meditech','Allscripts','PointClickCare',
-    'ICD-10','ICD10','CPT','HCPCS','HL7','FHIR',
-    'HIPAA','HITECH',
-    'Medicare','Medicaid','Tricare','Champva','CHIP',
-    'NCQA','URAC','TJC','JCAHO','CMS',
-    'BLS','ACLS','PALS','NRP','TNCC',
-    'telehealth','telephonic','remote',
-    'appeals','denials','authorization','certification',
-    'PHQ-9','CAGE','AUDIT','SBIRT',
-    'OASIS','RAI','MDS',
-    'ventilator','IV','infusion','wound','ostomy','dialysis','oncology',
-    'behavioral','psychiatric','geriatric','pediatric','neonatal','perinatal',
-    'orthopedic','cardiovascular','neurology','pulmonary','diabetes','COPD','CHF',
-    'Python','SQL','Excel','PowerPoint','Word','Outlook','SharePoint','Tableau'
-  ];
-
-  function normalizeText(txt) {
-    return txt.toLowerCase().replace(/[^a-z0-9\s\-]/g, ' ');
-  }
-
-  function extractPhrases(text) {
-    var found = [];
-    var lower = text.toLowerCase();
-    NURSING_PHRASES.forEach(function(ph) {
-      if (lower.indexOf(ph.toLowerCase()) !== -1) {
-        found.push(ph.toLowerCase());
-      }
-    });
-    return found;
-  }
-
-  function extractSingles(text) {
-    var found = [];
-    NURSING_SINGLES.forEach(function(kw) {
-      var pattern = new RegExp('(?<![a-zA-Z0-9\-])' + kw.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '(?![a-zA-Z0-9\-])', 'i');
-      if (pattern.test(text)) {
-        found.push(kw);
-      }
-    });
-    return found;
-  }
-
-  function extractGeneralKeywords(text) {
-    var normalized = normalizeText(text);
-    var words = normalized.split(/\s+/);
-    var counts = {};
-    words.forEach(function(w) {
-      w = w.replace(/^-+|-+$/g, '').trim();
-      if (w.length < 3) return;
-      if (STOPWORDS.has(w)) return;
-      if (/^\d+$/.test(w)) return;
-      counts[w] = (counts[w] || 0) + 1;
-    });
-    var result = [];
-    Object.keys(counts).forEach(function(k) {
-      if (counts[k] >= 1 && k.length >= 3) result.push(k);
-    });
-    return result;
-  }
-
-  function dedupeInsensitive(arr) {
-    var seen = {};
-    return arr.filter(function(item) {
-      var key = item.toLowerCase();
-      if (seen[key]) return false;
-      seen[key] = true;
-      return true;
-    });
-  }
-
-  function extractKeywordsFromJob(jobText) {
-    var phrases = extractPhrases(jobText);
-    var singles = extractSingles(jobText);
-    var general = extractGeneralKeywords(jobText);
-    var all = phrases.concat(singles).concat(general);
-    return dedupeInsensitive(all);
-  }
-
-  function isInText(keyword, text) {
-    var escapedKw = keyword.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-    var pattern = new RegExp('(?<![a-zA-Z0-9\-])' + escapedKw + '(?![a-zA-Z0-9\-])', 'i');
-    return pattern.test(text);
-  }
-
-  function analyzeKeywords(resumeText, jobText) {
-    var jobKeywords = extractKeywordsFromJob(jobText);
-    var matched = [];
-    var missing = [];
-    jobKeywords.forEach(function(kw) {
-      if (isInText(kw, resumeText)) {
-        matched.push(kw);
-      } else {
-        missing.push(kw);
-      }
-    });
-    matched.sort();
-    missing.sort();
-    return { matched: matched, missing: missing };
-  }
-
-  function generateTailoredResume(resumeText, missingKeywords) {
-    if (missingKeywords.length === 0) {
-      return resumeText;
-    }
-
-    var lines = resumeText.split('\n');
-    var output = [];
-    var injected = false;
-    var summaryPatterns = [/summary/i, /objective/i, /profile/i, /overview/i, /about/i];
-    var summaryIdx = -1;
-
-    for (var i = 0; i < lines.length; i++) {
-      var line = lines[i].trim();
-      for (var p = 0; p < summaryPatterns.length; p++) {
-        if (summaryPatterns[p].test(line) && line.length < 60) {
-          summaryIdx = i;
-          break;
-        }
-      }
-      if (summaryIdx !== -1) break;
-    }
-
-    var phraseKws = missingKeywords.filter(function(k) { return k.indexOf(' ') !== -1; });
-    var singleKws = missingKeywords.filter(function(k) { return k.indexOf(' ') === -1; });
-
-    for (var i = 0; i < lines.length; i++) {
-      output.push(lines[i]);
-
-      if (!injected && summaryIdx !== -1 && i === summaryIdx) {
-        var insertIdx = i + 1;
-        while (insertIdx < lines.length && lines[insertIdx].trim() === '') {
-          output.push(lines[insertIdx]);
-          insertIdx++;
-          i++;
-        }
-        if (insertIdx < lines.length) {
-          var summaryContent = lines[insertIdx];
-          if (phraseKws.length > 0) {
-            var addPhrases = phraseKws.slice(0, Math.min(3, phraseKws.length)).join(', ');
-            summaryContent = summaryContent.trimEnd() + ' Experienced in ' + addPhrases + '.';
-          }
-          output.push(summaryContent);
-          i = insertIdx;
-          injected = true;
-        }
-      }
-    }
-
-    var skillsPatterns = [/skills/i, /competencies/i, /qualifications/i, /proficiencies/i, /technologies/i, /tools/i, /certifications/i];
-    var finalText = output.join('\n');
-    var finalLines = finalText.split('\n');
-    var result = [];
-    var skillsInjected = false;
-
-    for (var j = 0; j < finalLines.length; j++) {
-      result.push(finalLines[j]);
-      if (!skillsInjected) {
-        var tl = finalLines[j].trim();
-        var isSkillHead = false;
-        for (var sp = 0; sp < skillsPatterns.length; sp++) {
-          if (skillsPatterns[sp].test(tl) && tl.length < 80) {
-            isSkillHead = true;
-            break;
-          }
-        }
-        if (isSkillHead) {
-          var nextJ = j + 1;
-          while (nextJ < finalLines.length && finalLines[nextJ].trim() === '') {
-            result.push(finalLines[nextJ]);
-            nextJ++;
-            j++;
-          }
-          if (singleKws.length > 0) {
-            var addSingles = singleKws.slice(0, Math.min(6, singleKws.length)).join(' | ');
-            result.push(addSingles);
-            skillsInjected = true;
-          }
-        }
-      }
-    }
-
-    if (!skillsInjected && missingKeywords.length > 0) {
-      var chunk = missingKeywords.slice(0, Math.min(8, missingKeywords.length));
-      result.push('');
-      result.push('ADDITIONAL RELEVANT SKILLS & KEYWORDS');
-      result.push(chunk.join(' | '));
-    }
-
-    result.push('');
-    result.push('-- Tailored for position. Keywords incorporated based on job posting analysis. --');
-
-    return result.join('\n');
-  }
-
-  function renderBadges(containerId, emptyId, items, color, bg) {
-    var container = document.getElementById(containerId);
-    var emptyEl = document.getElementById(emptyId);
-    container.innerHTML = '';
-    if (items.length === 0) {
-      emptyEl.style.display = 'block';
-      return;
-    }
-    emptyEl.style.display = 'none';
-    items.forEach(function(kw) {
-      var badge = document.createElement('span');
-      badge.textContent = kw;
-      badge.style.cssText = [
-        'display:inline-block',
-        'padding:3px 10px',
-        'border-radius:12px',
-        'font-size:0.78rem',
-        'font-weight:600',
-        'background:' + bg,
-        'color:' + color,
-        'border:1px solid ' + color
-      ].join(';');
-      container.appendChild(badge);
-    });
-  }
-
-  function showError(msg) {
-    var el = document.getElementById('resume-error');
-    el.textContent = msg;
-    el.style.display = 'block';
-  }
-
-  function hideError() {
-    document.getElementById('resume-error').style.display = 'none';
-  }
-
-  function setLoading(on) {
-    var btn = document.getElementById('resume-generate-btn');
-    var spinner = document.getElementById('resume-spinner');
-    var btnText = document.getElementById('resume-btn-text');
-    if (on) {
-      btn.disabled = true;
-      btn.style.background = '#93c5fd';
-      btn.style.cursor = 'not-allowed';
-      spinner.style.display = 'inline-block';
-      btnText.textContent = 'Analyzing...';
-    } else {
-      btn.disabled = false;
-      btn.style.background = '#2563eb';
-      btn.style.cursor = 'pointer';
-      spinner.style.display = 'none';
-      btnText.textContent = 'Generate Tailored Resume';
-    }
-  }
-
-  document.getElementById('resume-generate-btn').addEventListener('click', function() {
-    hideError();
-    var resumeText = document.getElementById('resume-input').value.trim();
-    var jobText = document.getElementById('jobpost-input').value.trim();
-
-    if (!resumeText) {
-      showError('Please paste your resume text before generating.');
-      return;
-    }
-    if (!jobText) {
-      showError('Please paste the job posting text before generating.');
-      return;
-    }
-
-    setLoading(true);
-    document.getElementById('resume-output').style.display = 'none';
-    document.getElementById('resume-copy-confirm').style.display = 'none';
-
-    setTimeout(function() {
-      try {
-        var analysis = analyzeKeywords(resumeText, jobText);
-
-        renderBadges(
-          'matched-keywords', 'matched-empty',
-          analysis.matched, '#15803d', '#f0fdf4'
-        );
-        renderBadges(
-          'missing-keywords', 'missing-empty',
-          analysis.missing, '#dc2626', '#fef2f2'
-        );
-
-        var tailored = generateTailoredResume(resumeText, analysis.missing);
-        document.getElementById('tailored-resume-output').value = tailored;
-        document.getElementById('resume-output').style.display = 'block';
-        document.getElementById('resume-output').scrollIntoView({ behavior: 'smooth', block: 'start' });
-      } catch(e) {
-        showError('An error occurred during analysis. Please check your input and try again.');
-      }
-      setLoading(false);
-    }, 1500);
-  });
-
-  document.getElementById('resume-copy-btn').addEventListener('click', function() {
-    var ta = document.getElementById('tailored-resume-output');
-    var confirm = document.getElementById('resume-copy-confirm');
-    if (!ta.value) return;
-    try {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(ta.value).then(function() {
-          confirm.style.display = 'block';
-          setTimeout(function() { confirm.style.display = 'none'; }, 2500);
-        });
-      } else {
-        ta.select();
-        document.execCommand('copy');
-        confirm.style.display = 'block';
-        setTimeout(function() { confirm.style.display = 'none'; }, 2500);
-      }
-    } catch(e) {
-      ta.select();
-    }
-  });
-
-  document.getElementById('resume-input').addEventListener('focus', function() {
-    this.style.borderColor = '#2563eb';
-  });
-  document.getElementById('resume-input').addEventListener('blur', function() {
-    this.style.borderColor = '#d1d5db';
-  });
-  document.getElementById('jobpost-input').addEventListener('focus', function() {
-    this.style.borderColor = '#2563eb';
-  });
-  document.getElementById('jobpost-input').addEventListener('blur', function() {
-    this.style.borderColor = '#d1d5db';
-  });
-
-})();
-</script>
-<div id="tab-coverletter" class="tab-content" style="display:none">
+      <div class="tab-panel" id="panel-coverletter">
   <div style="max-width:900px;margin:0 auto;padding:24px 16px">
     <h2 style="font-size:1.4rem;font-weight:700;color:#1e293b;margin:0 0 6px 0">Cover Letter Generator</h2>
     <p style="font-size:0.875rem;color:#64748b;margin:0 0 24px 0">Paste your resume and the job posting to generate a tailored healthcare cover letter.</p>
@@ -1664,312 +1191,7 @@
     </div>
   </div>
 </div>
-
-<style>
-@keyframes cl-spin {
-  to { transform: rotate(360deg); }
-}
-</style>
-
-<script>
-window._clLoading = false;
-
-function clExtractName(resumeText) {
-  if (!resumeText) return 'Your Name';
-  var lines = resumeText.trim().split('\n');
-  for (var i = 0; i < Math.min(5, lines.length); i++) {
-    var line = lines[i].trim();
-    if (!line) continue;
-    if (/^[A-Z][a-z]+(\s+[A-Z][a-z]+){1,3}$/.test(line)) return line;
-    if (/^[A-Z]{2,}(\s+[A-Z]{2,})+$/.test(line)) {
-      return line.split(' ').map(function(w){ return w.charAt(0)+w.slice(1).toLowerCase(); }).join(' ');
-    }
-  }
-  var nameMatch = resumeText.match(/(?:Name|NAME)[:\s]+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})/);
-  if (nameMatch) return nameMatch[1];
-  return 'Your Name';
-}
-
-function clExtractCredentials(resumeText) {
-  if (!resumeText) return '';
-  var creds = [];
-  var credPatterns = [/\b(RN|LPN|LVN|NP|CRNA|CNM|CNS|CNA|PA-C|MD|DO|BSN|MSN|ADN|DNP|PhD)\b/g,
-    /\b(ACLS|BLS|PALS|NRP|TNCC|CCRN|CEN|CNOR|CMSRN|ONC|CWCN|CAPA|RNC-OB|RNC-NIC)\b/g];
-  credPatterns.forEach(function(p){
-    var m;
-    while ((m = p.exec(resumeText)) !== null) {
-      if (creds.indexOf(m[1]) === -1) creds.push(m[1]);
-    }
-  });
-  return creds.join(', ');
-}
-
-function clExtractYearsExp(resumeText) {
-  if (!resumeText) return '';
-  var m = resumeText.match(/(\d+)\+?\s*years?\s*(?:of\s*)?(?:experience|exp)/i);
-  if (m) return m[1] + '+ years of experience';
-  var dates = [];
-  var yr = resumeText.match(/\b(19|20)(\d{2})\b/g);
-  if (yr && yr.length >= 2) {
-    yr.forEach(function(y){ dates.push(parseInt(y)); });
-    var minY = Math.min.apply(null, dates);
-    var maxY = new Date().getFullYear();
-    var span = maxY - minY;
-    if (span >= 1 && span <= 45) return span + '+ years of experience';
-  }
-  return '';
-}
-
-function clExtractSpecialties(resumeText) {
-  if (!resumeText) return [];
-  var specialties = [
-    'ICU','NICU','PICU','MICU','SICU','CCU','ER','ED','Emergency','Critical Care',
-    'Telemetry','Med-Surg','Medical-Surgical','Labor and Delivery','L&D','Oncology',
-    'Orthopedics','Pediatrics','Geriatrics','Psychiatric','Behavioral Health',
-    'Home Health','Hospice','Palliative','Perioperative','PACU','OR','Pre-Op',
-    'Post-Op','Dialysis','Infusion','Outpatient','Ambulatory','Wound Care',
-    'Rehabilitation','Cardiac','Neurology','Trauma'
-  ];
-  var found = [];
-  specialties.forEach(function(s){
-    var re = new RegExp('\\b' + s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '\\b','i');
-    if (re.test(resumeText) && found.indexOf(s) === -1) found.push(s);
-  });
-  return found.slice(0,4);
-}
-
-function clExtractCompany(jobText) {
-  if (!jobText) return 'your facility';
-  var patterns = [
-    /(?:at|with|for|join)\s+([A-Z][A-Za-z0-9&'.,\s-]{2,50}?)(?:\s*[-â|,]|\s+is\s|\s+are\s|\s*\n)/,
-    /^([A-Z][A-Za-z0-9&'.,\s-]{2,60})\s*(?:is\s+(?:seeking|looking|hiring)|has\s+an)/m,
-    /(?:Hospital|Medical Center|Health System|Healthcare|Clinic|Physicians|Nursing|Rehab|Center)[^\n]*/i,
-    /Company[:\s]+([^\n]+)/i,
-    /(?:Organization|Employer|Facility)[:\s]+([^\n]+)/i
-  ];
-  for (var i=0;i<patterns.length;i++){
-    var m=jobText.match(patterns[i]);
-    if(m){
-      var name=(m[1]||m[0]).trim().replace(/[,;.]$/,'');
-      if(name.length>3 && name.length<80) return name;
-    }
-  }
-  var lines=jobText.trim().split('\n');
-  for(var j=0;j<Math.min(4,lines.length);j++){
-    var l=lines[j].trim();
-    if(l.length>3&&l.length<80&&/[A-Z]/.test(l.charAt(0))&&!/^(job|position|title|role|about|we |our )/i.test(l)) return l;
-  }
-  return 'your facility';
-}
-
-function clExtractRole(jobText) {
-  if (!jobText) return 'this position';
-  var patterns = [
-    /(?:Position|Role|Job Title|Title)[:\s]+([^\n]+)/i,
-    /(?:We are|We're|We are currently)\s+(?:seeking|looking for|hiring)\s+(?:a|an)?\s*([^.\n]{5,80})/i,
-    /(?:opening|opportunity|position)\s+for\s+(?:a|an)?\s*([^.\n]{5,60})/i,
-    /^([A-Z][A-Za-z\s\/\-,]+(?:RN|Nurse|Nursing|NP|PA|Therapist|Tech|Technician|Coordinator|Specialist|Manager|Director|Assistant|Aide|CNA|LPN|LVN)[A-Za-z\s\/\-,]*)$/m
-  ];
-  for(var i=0;i<patterns.length;i++){
-    var m=jobText.match(patterns[i]);
-    if(m){
-      var r=(m[1]||m[0]).trim().replace(/[,;.]$/,'');
-      if(r.length>2&&r.length<80) return r;
-    }
-  }
-  var nurseMatch=jobText.match(/\b(Registered Nurse|RN|Licensed Practical Nurse|LPN|Nurse Practitioner|NP|Clinical Nurse|Charge Nurse|Staff Nurse|Travel Nurse|ICU Nurse|ER Nurse|CNA|LVN)\b/i);
-  if(nurseMatch) return nurseMatch[1];
-  return 'this position';
-}
-
-function clExtractRequirements(jobText) {
-  if (!jobText) return [];
-  var reqs = [];
-  var sections = jobText.match(/(?:requirements?|qualifications?|you(?:'re| are) a fit|what we(?:'re| are) looking for|responsibilities)[^\n]*\n([\s\S]{0,1200}?)(?:\n\n|\n[A-Z]|$)/gi);
-  var source = sections ? sections.join(' ') : jobText;
-  var bullets = source.match(/(?:^|\n)[\s]*[-*+>\u2022]\s*(.{10,120})/gm);
-  if(bullets){
-    bullets.slice(0,8).forEach(function(b){
-      var clean=b.replace(/^[\s\n\-*+>\u2022]+/,'').trim();
-      if(clean) reqs.push(clean);
-    });
-  }
-  if(reqs.length<2){
-    var sent=jobText.match(/[^.!?\n]{20,150}(?:experience|certification|license|proficiency|knowledge|ability|skill|require)[^.!?\n]{0,80}[.!?]/gi);
-    if(sent) sent.slice(0,5).forEach(function(s){ reqs.push(s.trim()); });
-  }
-  return reqs.slice(0,5);
-}
-
-function clMatchSkills(resumeText, jobText) {
-  if(!resumeText||!jobText) return [];
-  var skillKeywords=[
-    'electronic health record','EHR','EMR','Epic','Cerner','Meditech',
-    'patient assessment','care planning','medication administration','IV therapy',
-    'wound care','ventilator','charge nurse','preceptor','team leadership',
-    'ACLS','BLS','PALS','NRP','TNCC','case management','discharge planning',
-    'quality improvement','patient education','documentation','critical thinking',
-    'multidisciplinary','interdisciplinary','evidence-based','protocol','triage'
-  ];
-  var matched=[];
-  skillKeywords.forEach(function(sk){
-    var re=new RegExp('\\b'+sk.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','i');
-    if(re.test(resumeText)&&re.test(jobText)&&matched.indexOf(sk)===-1) matched.push(sk);
-  });
-  if(matched.length<2){
-    skillKeywords.forEach(function(sk){
-      var re=new RegExp('\\b'+sk.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','i');
-      if(re.test(resumeText)&&matched.indexOf(sk)===-1) matched.push(sk);
-    });
-  }
-  return matched.slice(0,4);
-}
-
-function clGetDate() {
-  var months=['January','February','March','April','May','June','July','August','September','October','November','December'];
-  var d=new Date();
-  return months[d.getMonth()]+' '+d.getDate()+', '+d.getFullYear();
-}
-
-function clBuildLetter(resume, job, notes) {
-  var name=clExtractName(resume);
-  var company=clExtractCompany(job);
-  var role=clExtractRole(job);
-  var creds=clExtractCredentials(resume);
-  var yrsExp=clExtractYearsExp(resume);
-  var specialties=clExtractSpecialties(resume);
-  var matched=clMatchSkills(resume, job);
-  var reqs=clExtractRequirements(job);
-  var dateStr=clGetDate();
-
-  var credStr=creds ? ', '+creds : '';
-  var expStr=yrsExp ? yrsExp : 'extensive clinical experience';
-  var specStr=specialties.length>0 ? specialties.join(', ') : 'patient care';
-  var skillStr=matched.length>0 ? matched.slice(0,3).join(', ') : 'patient assessment, care planning, and interdisciplinary collaboration';
-
-  var reqSentence='';
-  if(reqs.length>0){
-    var firstReq=reqs[0].toLowerCase();
-    reqSentence=' Your posting emphasizes '+firstReq+(firstReq.slice(-1)==='.'?'':',')+' and my background aligns directly with these needs.';
-  }
-
-  var notesParagraph='';
-  if(notes && notes.trim()){
-    notesParagraph='\n\nAdditionally, I want to highlight the following: '+notes.trim()+'\n';
-  }
-
-  var letter=
-dateStr+'\n\n'+
-'Dear Hiring Manager,\n\n'+
-'I am writing to express my strong interest in the '+role+' position at '+company+'. As a dedicated healthcare professional'+credStr+' with '+expStr+', I am drawn to this opportunity because of '+company+'s commitment to delivering high-quality, patient-centered care. I am confident that my clinical background and passion for nursing excellence make me a compelling candidate for your team.\n\n'+
-'Throughout my career, I have developed a solid foundation in '+specStr+'. My experience has allowed me to provide safe, evidence-based care across diverse patient populations while consistently demonstrating strong clinical judgment and attention to detail.'+reqSentence+' I am accustomed to working in fast-paced, high-acuity environments where collaboration, adaptability, and composure under pressure are essential.\n\n'+
-'In terms of specific competencies, my proficiency in '+skillStr+' directly supports the requirements outlined in your posting.'+(creds?' My credentials include '+creds+', reflecting my commitment to maintaining current clinical knowledge and professional standards.':' I hold active licensure and maintain all required certifications, reflecting my commitment to professional standards and patient safety.')+' I take pride in thorough documentation, effective communication with interdisciplinary teams, and a patient-advocacy-centered approach to every interaction.'+
-notesParagraph+
-'\n\nI welcome the opportunity to further discuss how my experience and values align with the goals of '+company+'. I am available at your convenience for an interview and can begin following reasonable notice. Thank you sincerely for your time and consideration -- I look forward to hearing from you.\n\n'+
-'Sincerely,\n'+
-name;
-
-  return letter;
-}
-
-function generateCoverLetter() {
-  if(window._clLoading) return;
-  var resume=document.getElementById('cl-resume').value.trim();
-  var job=document.getElementById('cl-job').value.trim();
-  var notes=document.getElementById('cl-notes').value.trim();
-  var errEl=document.getElementById('cl-error');
-  errEl.style.display='none';
-
-  if(!resume && !job){
-    errEl.textContent='Please paste your resume and job posting to generate a cover letter.';
-    errEl.style.display='block';
-    return;
-  }
-  if(!resume){
-    errEl.textContent='Please paste your resume so we can personalize your cover letter.';
-    errEl.style.display='block';
-    return;
-  }
-  if(!job){
-    errEl.textContent='Please paste the job posting so we can tailor your cover letter.';
-    errEl.style.display='block';
-    return;
-  }
-
-  window._clLoading=true;
-  var btn=document.getElementById('cl-generate-btn');
-  btn.disabled=true;
-  btn.style.background='#93c5fd';
-  btn.textContent='Generating...';
-  document.getElementById('cl-output-wrapper').style.display='none';
-  document.getElementById('cl-loading').style.display='block';
-
-  setTimeout(function(){
-    try{
-      var letter=clBuildLetter(resume,job,notes);
-      document.getElementById('cl-letter-text').textContent=letter;
-      document.getElementById('cl-loading').style.display='none';
-      document.getElementById('cl-output-wrapper').style.display='block';
-      document.getElementById('cl-output-wrapper').scrollIntoView({behavior:'smooth',block:'start'});
-    } catch(e){
-      document.getElementById('cl-loading').style.display='none';
-      errEl.textContent='An error occurred while generating the letter. Please check your input and try again.';
-      errEl.style.display='block';
-    }
-    window._clLoading=false;
-    btn.disabled=false;
-    btn.style.background='#2563eb';
-    btn.textContent='Generate Cover Letter';
-  },1500);
-}
-
-function clCopyToClipboard() {
-  var text=document.getElementById('cl-letter-text').textContent;
-  var copyBtn=document.getElementById('cl-copy-btn');
-  if(!text) return;
-  if(navigator.clipboard && navigator.clipboard.writeText){
-    navigator.clipboard.writeText(text).then(function(){
-      copyBtn.textContent='Copied!';
-      copyBtn.style.background='#dcfce7';
-      copyBtn.style.color='#166534';
-      copyBtn.style.borderColor='#86efac';
-      setTimeout(function(){
-        copyBtn.textContent='Copy to Clipboard';
-        copyBtn.style.background='#f1f5f9';
-        copyBtn.style.color='#374151';
-        copyBtn.style.borderColor='#cbd5e1';
-      },2200);
-    }).catch(function(){ clFallbackCopy(text,copyBtn); });
-  } else {
-    clFallbackCopy(text,copyBtn);
-  }
-}
-
-function clFallbackCopy(text,btn){
-  var ta=document.createElement('textarea');
-  ta.value=text;
-  ta.style.position='fixed';
-  ta.style.opacity='0';
-  document.body.appendChild(ta);
-  ta.focus();
-  ta.select();
-  try{
-    document.execCommand('copy');
-    btn.textContent='Copied!';
-    btn.style.background='#dcfce7';
-    btn.style.color='#166534';
-    btn.style.borderColor='#86efac';
-    setTimeout(function(){
-      btn.textContent='Copy to Clipboard';
-      btn.style.background='#f1f5f9';
-      btn.style.color='#374151';
-      btn.style.borderColor='#cbd5e1';
-    },2200);
-  } catch(e){}
-  document.body.removeChild(ta);
-}
-</script>
-<div id="tab-followup" class="tab-content" style="display:none;">
+      <div class="tab-panel" id="panel-followup">
   <style>
     .fu-card { background:#fff; border:1px solid #dde3ec; border-radius:8px; padding:20px; margin-bottom:18px; }
     .fu-card h3 { margin:0 0 14px 0; font-size:15px; font-weight:700; color:#1a2540; border-bottom:2px solid #e8ecf4; padding-bottom:8px; }
@@ -2174,8 +1396,7 @@ Thank you very much for your time. I look forward to hearing from you."</div>
     })();
   </script>
 </div>
-
-<div id="tab-interview" class="tab-content" style="display:none;">
+      <div class="tab-panel" id="panel-interview">
   <style>
     .ip-card { background:#fff; border:1px solid #dde3ec; border-radius:8px; padding:20px; margin-bottom:18px; }
     .ip-card h3 { margin:0 0 14px 0; font-size:15px; font-weight:700; color:#1a2540; border-bottom:2px solid #e8ecf4; padding-bottom:8px; }
@@ -2469,6 +1690,9 @@ Thank you very much for your time. I look forward to hearing from you."</div>
     }
   </script>
 </div>
+    </main>
+
+  
 </main>
 </div>
 </body>
