@@ -1203,241 +1203,306 @@ render();
 
 <script>
 (function() {
-  // --- EXTRACTION HELPERS ---
 
-  function extractName(text) {
-    var lines = text.trim().split('\n');
-    for(var i=0; i<Math.min(5, lines.length); i++){
-      var line = lines[i].trim();
-      if(!line || line.length < 3) continue;
-      if(/^[A-Z][a-z]+\s+[A-Z][a-z]/.test(line) && line.length < 60 && !/\d{3}/.test(line) && !/@/.test(line))
-        return line.split(/\s*[,|]\s*/)[0].trim();
+  // ============================================================
+  // SECTION 1: RESUME PARSING - Extract structured data from resume text
+  // ============================================================
+
+  var SECTION_HEADERS = [
+    'professional summary', 'summary', 'objective', 'profile',
+    'experience', 'professional experience', 'work experience', 'work history', 'employment history', 'employment',
+    'education', 'education and certifications', 'education & certifications',
+    'certifications', 'licenses', 'licenses and certifications', 'licenses & certifications',
+    'skills', 'core competencies', 'competencies', 'technical skills', 'key skills', 'areas of expertise',
+    'additional skills', 'additional information', 'professional development',
+    'volunteer', 'volunteer experience', 'awards', 'publications', 'references'
+  ];
+
+  function isSectionHeader(line) {
+    var cleaned = line.replace(/^[\s*#\-=_:]+/, '').replace(/[:\s*#\-=_]+$/, '').trim().toLowerCase();
+    if (cleaned.length < 3 || cleaned.length > 60) return null;
+    for (var i = 0; i < SECTION_HEADERS.length; i++) {
+      if (cleaned === SECTION_HEADERS[i]) return cleaned;
     }
-    return 'Your Name';
+    // Also match if the line is ALL CAPS and short
+    if (/^[A-Z\s&\/]+$/.test(line.trim()) && line.trim().length > 3 && line.trim().length < 50) {
+      var lower = line.trim().toLowerCase();
+      for (var j = 0; j < SECTION_HEADERS.length; j++) {
+        if (lower === SECTION_HEADERS[j]) return lower;
+      }
+    }
+    return null;
   }
 
-  function extractCredentials(text) {
-    var creds = [];
-    var patterns = [
-      /\bRN\b/, /\bBSN\b/, /\bMSN\b/, /\bDNP\b/, /\bADN\b/, /\bLPN\b/, /\bLVN\b/,
-      /\bCCM\b/, /\bACM\b/, /\bCPHQ\b/, /\bCEN\b/, /\bCCRN\b/, /\bOCN\b/,
-      /\bNP\b/, /\bFNP\b/, /\bANP\b/, /\bAPRN\b/, /\bCNS\b/
-    ];
-    patterns.forEach(function(p){
-      if(p.test(text)){
-        var m = text.match(p);
-        if(m && creds.indexOf(m[0]) === -1) creds.push(m[0]);
+  function parseResumeIntoSections(text) {
+    var lines = text.split('\n');
+    var sections = {};
+    var currentSection = '_header';
+    sections[currentSection] = [];
+
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      var header = isSectionHeader(line);
+      if (header) {
+        currentSection = header;
+        if (!sections[currentSection]) sections[currentSection] = [];
+      } else {
+        if (!sections[currentSection]) sections[currentSection] = [];
+        sections[currentSection].push(line);
       }
+    }
+    return sections;
+  }
+
+  // ============================================================
+  // SECTION 2: EXTRACT IDENTITY from resume header area
+  // ============================================================
+
+  function extractFullName(headerLines) {
+    for (var i = 0; i < Math.min(8, headerLines.length); i++) {
+      var line = headerLines[i].trim();
+      if (!line || line.length < 2) continue;
+      // Skip lines that look like contact info
+      if (/@/.test(line)) continue;
+      if (/\d{3}[\s.\-]?\d{3}[\s.\-]?\d{4}/.test(line)) continue;
+      if (/^http|^www|linkedin|github/i.test(line)) continue;
+      // A name line: starts with capital, has 2-4 words, no digits, no special chars
+      var words = line.replace(/,.*$/, '').trim().split(/\s+/);
+      if (words.length >= 2 && words.length <= 5) {
+        var looksLikeName = words.every(function(w) {
+          return /^[A-Z]/.test(w) && !/\d/.test(w) && w.length > 1;
+        });
+        if (looksLikeName) {
+          // Strip credential suffixes like ", RN, BSN"
+          return line.split(/\s*,\s*/)[0].trim();
+        }
+      }
+    }
+    return null;
+  }
+
+  function extractCredentialsFromHeader(headerLines) {
+    var creds = [];
+    var credPatterns = [
+      'RN', 'BSN', 'MSN', 'DNP', 'ADN', 'LPN', 'LVN', 'NP', 'FNP', 'ANP', 'APRN', 'CNS',
+      'CCM', 'ACM', 'CPHQ', 'CEN', 'CCRN', 'OCN', 'PHN', 'CHPN', 'CPN', 'CNOR'
+    ];
+    var fullText = headerLines.join(' ');
+    credPatterns.forEach(function(c) {
+      var regex = new RegExp('\\b' + c + '\\b');
+      if (regex.test(fullText) && creds.indexOf(c) === -1) creds.push(c);
     });
     return creds;
   }
 
-  function extractContact(text) {
-    var lines = text.trim().split('\n').slice(0, 8);
-    var parts = [];
-    for(var i=0; i<lines.length; i++){
-      var line = lines[i].trim();
-      var emailMatch = line.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-z]{2,}/);
-      if(emailMatch && parts.indexOf(emailMatch[0]) === -1) parts.push(emailMatch[0]);
-      var phoneMatch = line.match(/\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/);
-      if(phoneMatch && parts.indexOf(phoneMatch[0]) === -1) parts.push(phoneMatch[0]);
-      if(/\b[A-Z][a-z]+,?\s+[A-Z]{2}\b/.test(line)){
-        var locMatch = line.match(/([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?,?\s+[A-Z]{2}(?:\s+\d{5})?)/);
-        if(locMatch && parts.indexOf(locMatch[0]) === -1) parts.push(locMatch[0]);
+  function extractContactInfo(headerLines) {
+    var email = null, phone = null, location = null, linkedin = null;
+    for (var i = 0; i < Math.min(10, headerLines.length); i++) {
+      var line = headerLines[i].trim();
+      if (!email) {
+        var em = line.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-z]{2,}/);
+        if (em) email = em[0];
+      }
+      if (!phone) {
+        var ph = line.match(/\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4}/);
+        if (ph) phone = ph[0];
+      }
+      if (!linkedin) {
+        var li = line.match(/linkedin\.com\/in\/[a-zA-Z0-9\-]+/i);
+        if (li) linkedin = li[0];
+      }
+      if (!location) {
+        var loc = line.match(/([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?,?\s+[A-Z]{2}(?:\s+\d{5})?)/);
+        if (loc && !/@/.test(line) && !/linkedin/i.test(line)) location = loc[0];
       }
     }
+    var parts = [];
+    if (email) parts.push(email);
+    if (phone) parts.push(phone);
+    if (location) parts.push(location);
+    if (linkedin) parts.push(linkedin);
     return parts.join(' | ');
   }
 
-  function extractYears(text) {
-    var m = text.match(/(\d{1,2})\+?\s*(?:years?|yrs?)\s*(?:of\s+)?(?:experience|exp|clinical|nursing)/i);
-    if(m) return parseInt(m[1]);
-    var yearMatches = text.match(/\b(19|20)\d{2}\b/g);
-    if(yearMatches && yearMatches.length >= 2){
-      var years = yearMatches.map(Number).sort();
-      var span = years[years.length-1] - years[0];
-      if(span > 0 && span < 40) return span;
-    }
-    return 5;
+  // ============================================================
+  // SECTION 3: PARSE EXPERIENCE ENTRIES from resume
+  // ============================================================
+
+  function isDateLine(line) {
+    return /(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{4}\s*[-to]+\s*(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|Present|Current)/i.test(line) ||
+           /\d{1,2}\/\d{4}\s*[-to]+\s*(?:\d{1,2}\/\d{4}|Present|Current)/i.test(line);
   }
 
-  function extractExperienceBlocks(resumeText) {
+  function isLocationLine(line) {
+    return /^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?,?\s+[A-Z]{2}(?:\s+\d{5})?$/.test(line.trim());
+  }
+
+  function isBulletLine(line) {
+    return /^\s*[-*]\s+/.test(line) || /^\s*\d+\.\s+/.test(line);
+  }
+
+  function isTitleCompanyLine(line) {
+    if (isDateLine(line) || isBulletLine(line) || isLocationLine(line)) return false;
+    if (line.length < 5 || line.length > 120) return false;
+    return /^[A-Z][A-Za-z\s,]+\s+[-|]\s+[A-Z]/.test(line);
+  }
+
+  function parseExperienceEntries(lines) {
+    // Pass 1: Group lines into blocks. A title/company line starts a new block.
     var blocks = [];
-    var lines = resumeText.split('\n');
-    var current = null;
-    var inExpSection = false;
+    var currentBlock = null;
 
-    for(var i=0; i<lines.length; i++){
+    for (var i = 0; i < lines.length; i++) {
       var line = lines[i].trim();
-      if(!line) continue;
+      if (!line) continue;
 
-      // Detect experience section headers
-      if(/^(?:professional\s+)?experience|work\s+history|employment/i.test(line)){
-        inExpSection = true;
-        continue;
-      }
-      // Detect end of experience section
-      if(inExpSection && /^(?:education|certif|licens|skills|additional|references|training|volunteer)/i.test(line)){
-        if(current){ blocks.push(current); current = null; }
-        inExpSection = false;
-        continue;
-      }
-
-      if(inExpSection || /\d{4}/.test(line)){
-        // Bullet point
-        if(/^[\-*]\s/.test(line) || /^\d+\.\s/.test(line)){
-          if(current) current.bullets.push(line.replace(/^[\-*\d.]+\s*/, ''));
-        }
-        // Job title line (has year + role keywords)
-        else if(/\d{4}/.test(line) && line.length > 10 && line.length < 200){
-          if(current && (current.bullets.length > 0 || current.title)) blocks.push(current);
-          current = { title: line, bullets: [] };
-        }
-        // Continuation of title or standalone line
-        else if(current && current.bullets.length === 0 && !current.company && /[A-Z]/.test(line)){
-          current.company = line;
+      if (isTitleCompanyLine(line)) {
+        if (currentBlock) blocks.push(currentBlock);
+        currentBlock = [line];
+      } else if (currentBlock) {
+        currentBlock.push(line);
+      } else {
+        // Lines before first title - might be date-first format
+        if (isDateLine(line)) {
+          currentBlock = [line];
         }
       }
     }
-    if(current) blocks.push(current);
-    return blocks;
-  }
+    if (currentBlock) blocks.push(currentBlock);
 
-  function extractEducation(text) {
-    var eduLines = [];
-    var lines = text.split('\n');
-    var inEdu = false;
-    for(var i=0; i<lines.length; i++){
-      var line = lines[i].trim();
-      if(!line) continue;
-      if(/^(?:education|academic|degree)/i.test(line)){ inEdu = true; continue; }
-      if(inEdu && /^(?:experience|skills|certif|additional|references)/i.test(line)) break;
-      if(inEdu && line.length > 5) eduLines.push(line);
-      // Also capture degree mentions outside edu section
-      if(!inEdu && /\b(?:Bachelor|Master|Doctor|Associate|BSN|MSN|DNP|ADN)\b/i.test(line) && /\b(?:Nursing|Science|University|College)\b/i.test(line)){
-        eduLines.push(line);
-      }
-    }
-    return eduLines;
-  }
+    // Pass 2: Parse each block into a structured entry
+    var entries = [];
+    blocks.forEach(function(block) {
+      var entry = { title: '', company: '', dates: '', location: '', bullets: [] };
 
-  function extractSkillsFromResume(text) {
-    var skills = [];
-    var lines = text.split('\n');
-    var inSkills = false;
-    for(var i=0; i<lines.length; i++){
-      var line = lines[i].trim();
-      if(!line) continue;
-      if(/^(?:skills|competencies|expertise|technical)/i.test(line)){ inSkills = true; continue; }
-      if(inSkills && /^(?:experience|education|certif|additional|references)/i.test(line)) break;
-      if(inSkills && line.length > 3){
-        // Split by commas, pipes, semicolons, or bullet chars
-        var items = line.split(/[,;|]/).map(function(s){ return s.replace(/^[\-*]+\s*/, '').trim(); }).filter(function(s){ return s.length > 2; });
-        skills = skills.concat(items);
-      }
-    }
-    // Also extract from bullet points throughout
-    var bulletSkills = text.match(/(?:proficient|experienced|skilled|expertise)\s+(?:in|with)\s+([^.\n]+)/gi);
-    if(bulletSkills){
-      bulletSkills.forEach(function(m){
-        var skill = m.replace(/^(?:proficient|experienced|skilled|expertise)\s+(?:in|with)\s+/i, '').trim();
-        if(skill.length > 3 && skill.length < 60) skills.push(skill);
+      block.forEach(function(line) {
+        if (!entry.title && isTitleCompanyLine(line)) {
+          var sepMatch = line.match(/^(.+?)\s+[-|]\s+(.+)$/);
+          if (sepMatch) {
+            entry.title = sepMatch[1].trim();
+            entry.company = sepMatch[2].trim();
+          } else {
+            entry.title = line;
+          }
+        } else if (!entry.dates && isDateLine(line)) {
+          entry.dates = line.trim();
+        } else if (!entry.location && isLocationLine(line)) {
+          entry.location = line.trim();
+        } else if (isBulletLine(line)) {
+          entry.bullets.push(line.replace(/^\s*[-*\d.]+\s+/, '').trim());
+        } else if (line.length > 20 && !isTitleCompanyLine(line) && !isDateLine(line)) {
+          entry.bullets.push(line);
+        }
       });
-    }
-    return skills;
+
+      entries.push(entry);
+    });
+
+    return entries;
   }
 
-  // --- JOB POSTING EXTRACTION ---
+  // ============================================================
+  // SECTION 4: PARSE EDUCATION from resume
+  // ============================================================
+
+  function parseEducation(lines) {
+    var entries = [];
+    var current = null;
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i].trim();
+      if (!line) continue;
+      // Detect degree line
+      if (/(?:Bachelor|Master|Associate|Doctor|Diploma|BSN|MSN|ADN|DNP|PhD|B\.S\.|M\.S\.|A\.S\.|B\.A\.|M\.A\.)/i.test(line) ||
+          (/^[A-Z]/.test(line) && line.length < 100 && !/^\s*[-*]/.test(line) && !current)) {
+        if (current) entries.push(current);
+        current = { text: line, details: [] };
+      } else if (current) {
+        current.details.push(line);
+      } else {
+        entries.push({ text: line, details: [] });
+      }
+    }
+    if (current) entries.push(current);
+    return entries.map(function(e) {
+      var result = e.text;
+      if (e.details.length > 0) result += '\n  ' + e.details.join('\n  ');
+      return result;
+    });
+  }
+
+  // ============================================================
+  // SECTION 5: JOB POSTING KEYWORD EXTRACTION (separate from resume)
+  // ============================================================
+
+  function extractJobKeywords(jobText) {
+    var lower = jobText.toLowerCase();
+    var keywords = [];
+    var checks = [
+      'case management', 'utilization management', 'utilization review', 'concurrent review',
+      'prior authorization', 'discharge planning', 'care coordination', 'care management',
+      'patient assessment', 'clinical assessment', 'nursing assessment',
+      'interqual', 'milliman', 'mcg guidelines', 'evidence-based',
+      'hipaa', 'hipaa compliance', 'regulatory compliance',
+      'electronic health records', 'ehr', 'emr', 'epic', 'cerner', 'meditech',
+      'interdisciplinary', 'multidisciplinary', 'collaboration',
+      'patient education', 'health promotion', 'disease management',
+      'quality improvement', 'quality assurance', 'performance improvement',
+      'documentation', 'clinical documentation', 'medical records',
+      'telehealth', 'remote', 'telephonic',
+      'managed care', 'insurance', 'medicare', 'medicaid',
+      'critical thinking', 'clinical judgment', 'decision making',
+      'communication', 'interpersonal', 'leadership',
+      'time management', 'organizational', 'detail-oriented',
+      'bsn', 'msn', 'rn', 'ccm', 'acm',
+      'acute care', 'home health', 'hospice', 'long-term care', 'ambulatory',
+      'pediatric', 'geriatric', 'oncology', 'cardiac', 'behavioral health', 'mental health',
+      'wound care', 'pain management', 'infection control', 'medication management',
+      'patient advocacy', 'patient safety', 'risk management',
+      'treatment planning', 'clinical pathways', 'protocols'
+    ];
+    checks.forEach(function(kw) {
+      if (lower.indexOf(kw) > -1 && keywords.indexOf(kw) === -1) keywords.push(kw);
+    });
+    return keywords;
+  }
 
   function extractJobTitle(text) {
     var m = text.match(/(?:title|position|role)[:\s]+([^\n]+)/i);
-    if(m) return m[1].trim().replace(/[-|,].+$/, '').trim();
+    if (m) return m[1].trim().replace(/[-|,].+$/, '').trim();
     var lines = text.trim().split('\n');
-    for(var i=0; i<Math.min(5, lines.length); i++){
+    for (var i = 0; i < Math.min(5, lines.length); i++) {
       var line = lines[i].trim();
-      if(line.length > 5 && line.length < 80 && /(?:nurse|rn|case|review|clinical|health|care|manager|coordinator|specialist)/i.test(line)){
+      if (line.length > 5 && line.length < 80 && /(?:nurse|rn|case|review|clinical|health|care|manager|coordinator|specialist)/i.test(line)) {
         return line.replace(/[-|,].+$/, '').trim();
       }
     }
-    return 'the position';
+    return '';
   }
 
-  function extractCompany(text) {
+  function extractTargetCompany(text) {
     var m = text.match(/(?:company|organization|employer)[:\s]+([A-Z][A-Za-z0-9\s&'.,-]+?)(?:\.|,|\n)/i);
-    if(m) return m[1].trim();
+    if (m) return m[1].trim();
     var patterns = [
       /(?:at|with|for|join)\s+([A-Z][A-Za-z0-9&'.,\s-]{2,50}?)(?:\s*[-|,]|\s+is\s|\s+are\s|\s*\n)/,
       /^([A-Z][A-Za-z0-9&'.,\s-]{2,60})\s*(?:is\s+(?:seeking|looking|hiring))/m
     ];
-    for(var i=0; i<patterns.length; i++){
+    for (var i = 0; i < patterns.length; i++) {
       var pm = text.match(patterns[i]);
-      if(pm) return pm[1].trim();
+      if (pm) return pm[1].trim();
     }
-    return 'the organization';
+    return '';
   }
 
-  function extractJobKeywords(jobText) {
-    var lower = jobText.toLowerCase();
-    var found = [];
-    var checks = [
-      {key:'case management', kw:'Case Management'},
-      {key:'utilization review', kw:'Utilization Review'},
-      {key:'prior auth', kw:'Prior Authorization'},
-      {key:'care coordination', kw:'Care Coordination'},
-      {key:'discharge planning', kw:'Discharge Planning'},
-      {key:'concurrent review', kw:'Concurrent Review'},
-      {key:'interqual', kw:'InterQual Criteria'},
-      {key:'milliman', kw:'Milliman Criteria'},
-      {key:'appeal', kw:'Appeals and Denials Management'},
-      {key:'remote', kw:'Remote Clinical Operations'},
-      {key:'telehealth', kw:'Telehealth'},
-      {key:'managed care', kw:'Managed Care'},
-      {key:'insurance', kw:'Health Insurance Operations'},
-      {key:'ehr', kw:'Electronic Health Records'},
-      {key:'electronic health', kw:'Electronic Health Records'},
-      {key:'epic', kw:'Epic Systems'},
-      {key:'cerner', kw:'Cerner'},
-      {key:'hipaa', kw:'HIPAA Compliance'},
-      {key:'quality', kw:'Quality Improvement'},
-      {key:'patient education', kw:'Patient Education'},
-      {key:'assessment', kw:'Clinical Assessment'},
-      {key:'documentation', kw:'Clinical Documentation'},
-      {key:'evidence', kw:'Evidence-Based Practice'},
-      {key:'interdisciplin', kw:'Interdisciplinary Collaboration'},
-      {key:'critical think', kw:'Critical Thinking'},
-      {key:'communication', kw:'Communication'},
-      {key:'time management', kw:'Time Management'},
-      {key:'licensure', kw:'Multi-State Licensure'},
-      {key:'compact', kw:'Compact Nursing License'},
-      {key:'medicaid', kw:'Medicaid'},
-      {key:'medicare', kw:'Medicare'},
-      {key:'clinical review', kw:'Clinical Review'},
-      {key:'benefit', kw:'Benefits Determination'},
-      {key:'precert', kw:'Precertification'},
-      {key:'peer review', kw:'Peer Review'},
-      {key:'triage', kw:'Clinical Triage'},
-      {key:'chronic', kw:'Chronic Disease Management'},
-      {key:'population health', kw:'Population Health'},
-      {key:'motivational interview', kw:'Motivational Interviewing'}
-    ];
-    var seen = {};
-    checks.forEach(function(c){
-      if(lower.indexOf(c.key) > -1 && !seen[c.kw]){
-        found.push(c.kw);
-        seen[c.kw] = true;
-      }
-    });
-    return found;
-  }
+  // ============================================================
+  // SECTION 6: KEYWORD MATCHING (resume content vs job keywords)
+  // ============================================================
 
-  function findResumeMatches(resumeText, jobKeywords) {
+  function matchKeywords(resumeText, jobKeywords) {
     var lower = resumeText.toLowerCase();
     var matched = [];
     var missing = [];
-    jobKeywords.forEach(function(kw){
-      // Check if the core concept exists in the resume
-      var core = kw.toLowerCase().split(' ').slice(0, 2).join(' ');
-      if(lower.indexOf(core) > -1){
+    jobKeywords.forEach(function(kw) {
+      if (lower.indexOf(kw) > -1) {
         matched.push(kw);
       } else {
         missing.push(kw);
@@ -1446,151 +1511,212 @@ render();
     return { matched: matched, missing: missing };
   }
 
-  // --- RESUME BUILDER ---
+  // ============================================================
+  // SECTION 7: BUILD THE RESUME OUTPUT
+  // ============================================================
 
-  function buildProfessionalResume(resumeText, jobText) {
-    var name = extractName(resumeText);
-    var creds = extractCredentials(resumeText);
-    var contact = extractContact(resumeText);
-    var years = extractYears(resumeText);
-    var expBlocks = extractExperienceBlocks(resumeText);
-    var eduLines = extractEducation(resumeText);
-    var resumeSkills = extractSkillsFromResume(resumeText);
-
-    var jobTitle = extractJobTitle(jobText);
-    var company = extractCompany(jobText);
-    var jobKeywords = extractJobKeywords(jobText);
-    var analysis = findResumeMatches(resumeText, jobKeywords);
-
-    // Build header
-    var header = name;
-    if(creds.length > 0) header += ', ' + creds.join(', ');
-    if(contact) header += '\n' + contact;
-
-    // Build professional summary using ONLY resume info, flavored with job keywords
-    var topSkills = analysis.matched.slice(0, 3);
-    if(topSkills.length < 3){
-      var extras = ['patient care', 'clinical assessment', 'care coordination'];
-      extras.forEach(function(e){ if(topSkills.length < 3) topSkills.push(e); });
+  function extractYearsExperience(text) {
+    var m = text.match(/(\d{1,2})\+?\s*(?:years|yrs)/i);
+    if (m) return m[1];
+    // Estimate from date ranges
+    var years = text.match(/\b(19|20)\d{2}\b/g);
+    if (years && years.length >= 2) {
+      var nums = years.map(Number);
+      var min = Math.min.apply(null, nums);
+      var max = Math.max.apply(null, nums);
+      if (max - min > 0 && max - min < 50) return String(max - min);
     }
-    var summary = 'PROFESSIONAL SUMMARY\n' +
-      'Dedicated and results-driven registered nurse with ' + years + '+ years of clinical experience ' +
-      'specializing in ' + topSkills[0].toLowerCase() + ' and ' + topSkills[1].toLowerCase() + '. ' +
-      'Proven ability to manage complex patient populations, optimize clinical outcomes, and collaborate ' +
-      'effectively with interdisciplinary teams. Seeking to contribute expertise in ' +
-      topSkills[2].toLowerCase() + ' as a ' + jobTitle + ' with ' + company + '. ' +
-      'Known for strong clinical judgment, detailed documentation, and commitment to evidence-based practice.';
+    return '';
+  }
 
-    // Build core competencies from resume skills + matched job keywords
-    var compList = [];
-    analysis.matched.forEach(function(m){ if(compList.length < 12) compList.push(m); });
-    resumeSkills.forEach(function(s){
-      if(compList.length < 12){
-        var clean = s.trim();
-        if(clean.length > 3 && clean.length < 40){
-          var dup = compList.some(function(c){ return c.toLowerCase() === clean.toLowerCase(); });
-          if(!dup) compList.push(clean);
+  function buildResume(resumeText, jobText) {
+    // STEP 1: Parse resume into sections
+    var sections = parseResumeIntoSections(resumeText);
+    var headerLines = sections['_header'] || [];
+
+    // STEP 2: Extract identity from resume ONLY
+    var fullName = extractFullName(headerLines);
+    if (!fullName) {
+      // Try harder: check all header lines for name-like pattern
+      for (var i = 0; i < headerLines.length; i++) {
+        var l = headerLines[i].trim();
+        if (l.length > 3 && l.length < 50 && /^[A-Z][a-z]+ [A-Z][a-z]/.test(l)) {
+          fullName = l.split(/\s*,\s*/)[0].trim();
+          break;
         }
+      }
+    }
+    if (!fullName) fullName = '[NAME NOT FOUND - check resume header]';
+
+    var credentials = extractCredentialsFromHeader(headerLines);
+    var contactInfo = extractContactInfo(headerLines);
+    var yearsExp = extractYearsExperience(resumeText);
+
+    // STEP 3: Extract job posting info (kept completely separate)
+    var jobKeywords = extractJobKeywords(jobText);
+    var jobTitle = extractJobTitle(jobText);
+    var targetCompany = extractTargetCompany(jobText);
+    var keyMatch = matchKeywords(resumeText, jobKeywords);
+
+    // STEP 4: Get experience entries from resume
+    var expSectionLines = sections['experience'] || sections['professional experience'] || sections['work experience'] || sections['work history'] || sections['employment history'] || sections['employment'] || [];
+    var experienceEntries = parseExperienceEntries(expSectionLines);
+
+    // STEP 5: Get education and certifications from resume
+    var eduLines = sections['education'] || sections['education and certifications'] || sections['education & certifications'] || [];
+    var certLines = sections['certifications'] || sections['licenses'] || sections['licenses and certifications'] || sections['licenses & certifications'] || [];
+    var educationEntries = parseEducation(eduLines);
+    var certEntries = parseEducation(certLines);
+
+    // STEP 6: Get skills from resume
+    var skillLines = sections['skills'] || sections['core competencies'] || sections['competencies'] || sections['technical skills'] || sections['key skills'] || sections['areas of expertise'] || [];
+    var additionalSkillLines = sections['additional skills'] || sections['additional information'] || [];
+    var resumeSkills = [];
+    skillLines.concat(additionalSkillLines).forEach(function(line) {
+      var l = line.trim();
+      if (!l) return;
+      // Split by common delimiters
+      var items = l.split(/[,;|]/).map(function(s) { return s.replace(/^[\s*-]+/, '').trim(); }).filter(function(s) { return s.length > 2 && s.length < 60; });
+      if (items.length > 1) {
+        resumeSkills = resumeSkills.concat(items);
+      } else if (l.length > 2 && l.length < 60 && !/^\s*$/.test(l)) {
+        resumeSkills.push(l.replace(/^[-*]\s*/, '').trim());
       }
     });
-    // Pad with defaults if needed
-    var defaults = ['Patient Assessment','Care Planning','Clinical Documentation','Quality Improvement','Patient Education','Interdisciplinary Collaboration'];
-    defaults.forEach(function(d){ if(compList.length < 9){ var dup = compList.some(function(c){return c.toLowerCase()===d.toLowerCase();}); if(!dup) compList.push(d); }});
 
-    var competencies = 'CORE COMPETENCIES';
-    var compRows = [];
-    for(var i=0; i<compList.length; i+=3){
-      var row = compList.slice(i, i+3).map(function(c){
-        return c.charAt(0).toUpperCase() + c.slice(1);
-      });
-      compRows.push(row.join('  |  '));
-    }
-    competencies += '\n' + compRows.join('\n');
+    // ---- BUILD OUTPUT ----
 
-    // Build experience section - use ONLY resume experience blocks
-    var experience = 'PROFESSIONAL EXPERIENCE';
-    if(expBlocks.length > 0){
-      expBlocks.forEach(function(block){
-        experience += '\n\n' + block.title;
-        if(block.company) experience += '\n' + block.company;
-        if(block.bullets.length > 0){
-          block.bullets.forEach(function(b){
-            experience += '\n- ' + b;
-          });
-        }
-      });
+    // HEADER (contact info appears ONCE)
+    var output = '';
+    output += fullName;
+    if (credentials.length > 0) output += ', ' + credentials.join(', ');
+    output += '\n';
+    if (contactInfo) output += contactInfo + '\n';
+
+    // PROFESSIONAL SUMMARY (uses ONLY resume facts, naturally includes matched keywords)
+    output += '\n--- PROFESSIONAL SUMMARY ---\n';
+    var topMatched = keyMatch.matched.slice(0, 3);
+    var summaryParts = [];
+    if (yearsExp) {
+      summaryParts.push('Registered nurse with ' + yearsExp + '+ years of clinical experience');
     } else {
-      // If no structured blocks found, extract meaningful lines from resume
-      var resumeLines = resumeText.split('\n');
-      var bulletLines = [];
-      resumeLines.forEach(function(line){
-        var trimmed = line.trim();
-        if(/^[\-*]\s/.test(trimmed) && trimmed.length > 15){
-          bulletLines.push(trimmed.replace(/^[\-*]\s*/, ''));
-        }
-      });
-      if(bulletLines.length > 0){
-        experience += '\n\nClinical Nursing Professional';
-        bulletLines.forEach(function(b){ experience += '\n- ' + b; });
-      } else {
-        experience += '\n\n(Experience details from your resume will appear here. For best results, format your resume with clear job titles, dates, and bullet-point accomplishments.)';
+      summaryParts.push('Experienced registered nurse');
+    }
+    if (topMatched.length >= 2) {
+      summaryParts[0] += ' specializing in ' + topMatched[0] + ' and ' + topMatched[1] + '.';
+    } else if (topMatched.length === 1) {
+      summaryParts[0] += ' with expertise in ' + topMatched[0] + '.';
+    } else {
+      summaryParts[0] += ' with diverse clinical expertise.';
+    }
+
+    // Add a sentence about proven abilities using resume-sourced skills
+    var provenSkills = resumeSkills.slice(0, 3);
+    if (provenSkills.length > 0) {
+      summaryParts.push('Proven ability in ' + provenSkills.join(', ').toLowerCase() + ', with a track record of delivering high-quality patient outcomes.');
+    } else {
+      summaryParts.push('Proven ability to manage complex patient populations and deliver high-quality patient outcomes.');
+    }
+
+    // Seeking statement with actual job title and company from posting
+    if (jobTitle && targetCompany) {
+      summaryParts.push('Seeking to leverage clinical expertise as ' + jobTitle + ' with ' + targetCompany + '.');
+    } else if (jobTitle) {
+      summaryParts.push('Seeking to leverage clinical expertise as ' + jobTitle + '.');
+    }
+
+    summaryParts.push('Known for strong clinical judgment, thorough documentation, and commitment to evidence-based practice.');
+    output += summaryParts.join(' ') + '\n';
+
+    // CORE COMPETENCIES (resume skills + matched job keywords, no duplicates)
+    output += '\n--- CORE COMPETENCIES ---\n';
+    var compList = [];
+    // Start with matched keywords (these are resume-verified)
+    keyMatch.matched.forEach(function(kw) {
+      var capitalized = kw.replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+      if (compList.length < 12) compList.push(capitalized);
+    });
+    // Add resume skills that aren't duplicates
+    resumeSkills.forEach(function(sk) {
+      if (compList.length < 12) {
+        var isDup = compList.some(function(c) { return c.toLowerCase() === sk.toLowerCase(); });
+        if (!isDup && sk.length > 2) compList.push(sk);
       }
+    });
+    // Format as grid (3 per line)
+    for (var ci = 0; ci < compList.length; ci += 3) {
+      var row = compList.slice(ci, ci + 3);
+      output += row.join('  |  ') + '\n';
     }
 
-    // Build education section - use ONLY resume education
-    var education = 'EDUCATION AND CERTIFICATIONS';
-    if(eduLines.length > 0){
-      eduLines.forEach(function(line){ education += '\n' + line; });
+    // PROFESSIONAL EXPERIENCE (ALL from resume, every entry complete)
+    output += '\n--- PROFESSIONAL EXPERIENCE ---\n';
+    if (experienceEntries.length === 0) {
+      output += '[No experience entries detected - check resume formatting]\n';
+    }
+    experienceEntries.forEach(function(entry) {
+      output += '\n';
+      if (entry.title) output += entry.title;
+      if (entry.company) output += ' - ' + entry.company;
+      output += '\n';
+      if (entry.dates) output += entry.dates;
+      if (entry.location) output += '  |  ' + entry.location;
+      if (entry.dates || entry.location) output += '\n';
+      if (entry.bullets.length === 0) {
+        output += '  [No description found for this role]\n';
+      }
+      entry.bullets.forEach(function(b) {
+        output += '  - ' + b + '\n';
+      });
+    });
+
+    // EDUCATION & CERTIFICATIONS
+    output += '\n--- EDUCATION & CERTIFICATIONS ---\n';
+    if (educationEntries.length === 0 && certEntries.length === 0) {
+      output += '[No education entries detected - check resume formatting]\n';
+    }
+    educationEntries.forEach(function(e) {
+      output += e + '\n';
+    });
+    if (certEntries.length > 0) {
+      output += '\nCertifications:\n';
+      certEntries.forEach(function(c) {
+        output += '  - ' + c + '\n';
+      });
+    }
+
+    // ADDITIONAL SKILLS (only from resume, not already listed)
+    output += '\n--- ADDITIONAL SKILLS ---\n';
+    var listedLower = compList.map(function(c) { return c.toLowerCase(); });
+    var extraSkills = resumeSkills.filter(function(s) {
+      return !listedLower.some(function(l) { return l === s.toLowerCase(); }) && s.length > 2;
+    }).slice(0, 8);
+    if (extraSkills.length > 0) {
+      output += extraSkills.join(', ') + '\n';
     } else {
-      // Infer from credentials
-      if(creds.indexOf('DNP') > -1) education += '\nDoctor of Nursing Practice (DNP)';
-      else if(creds.indexOf('MSN') > -1) education += '\nMaster of Science in Nursing (MSN)';
-      else if(creds.indexOf('BSN') > -1) education += '\nBachelor of Science in Nursing (BSN)';
-      else if(creds.indexOf('ADN') > -1) education += '\nAssociate Degree in Nursing (ADN)';
-      else education += '\nNursing Degree';
-      // List certifications
-      var certCreds = creds.filter(function(c){ return ['CCM','ACM','CPHQ','CEN','CCRN','OCN','FNP','ANP','APRN','CNS'].indexOf(c) > -1; });
-      if(certCreds.length > 0) education += '\nCertifications: ' + certCreds.join(', ');
+      output += '[All skills already listed in Core Competencies]\n';
     }
-    education += '\nActive Registered Nurse License';
-    if(creds.indexOf('RN') > -1) education += ' (RN)';
-
-    // Additional skills from resume
-    var additional = 'ADDITIONAL SKILLS';
-    var addSkills = [];
-    // Add missing keywords as areas of knowledge (honestly framed)
-    if(analysis.missing.length > 0){
-      additional += '\nFamiliar with: ' + analysis.missing.slice(0, 5).join(', ');
-    }
-    if(resumeSkills.length > 0){
-      var extra = resumeSkills.filter(function(s){
-        return !compList.some(function(c){ return c.toLowerCase() === s.toLowerCase(); }) && s.length > 3 && s.length < 50;
-      }).slice(0, 5);
-      if(extra.length > 0) additional += '\nTechnical Skills: ' + extra.join(', ');
-    }
-    additional += '\nProficient in electronic health records and clinical documentation systems';
-    additional += '\nStrong written and verbal communication skills';
-
-    var fullResume = header + '\n\n' + summary + '\n\n' + competencies + '\n\n' + experience + '\n\n' + education + '\n\n' + additional;
 
     return {
-      resume: fullResume,
-      matched: analysis.matched,
-      missing: analysis.missing,
+      resume: output,
+      matched: keyMatch.matched,
+      missing: keyMatch.missing,
       jobTitle: jobTitle,
-      company: company
+      company: targetCompany
     };
   }
 
-  // --- UI WIRING ---
+  // ============================================================
+  // SECTION 8: UI WIRING (unchanged from original)
+  // ============================================================
 
   function showError(msg) {
     var el = document.getElementById('resume-error');
-    if(el){ el.textContent = msg; el.style.display = 'block'; }
+    if (el) { el.textContent = msg; el.style.display = 'block'; }
   }
   function hideError() {
     var el = document.getElementById('resume-error');
-    if(el){ el.textContent = ''; el.style.display = 'none'; }
+    if (el) { el.textContent = ''; el.style.display = 'none'; }
   }
 
   document.getElementById('resume-generate-btn').addEventListener('click', function() {
@@ -1601,100 +1727,100 @@ render();
     var resumeText = document.getElementById('resume-input').value.trim();
     var jobText = document.getElementById('jobpost-input').value.trim();
 
-    if(!resumeText && !jobText){
+    if (!resumeText && !jobText) {
       showError('Please paste both your resume and the job posting.');
       return;
     }
-    if(!resumeText){
+    if (!resumeText) {
       showError('Please paste your resume in the left text area.');
       return;
     }
-    if(!jobText){
+    if (!jobText) {
       showError('Please paste the job posting in the right text area.');
       return;
     }
 
-    btn.disabled = true;
-    if(spinner) spinner.style.display = 'inline-block';
-    if(btnText) btnText.textContent = 'Analyzing...';
+    // Show loading
+    if (btn) btn.disabled = true;
+    if (spinner) spinner.style.display = 'inline-block';
+    if (btnText) btnText.textContent = 'Generating...';
 
-    setTimeout(function(){
+    setTimeout(function() {
       try {
-        var result = buildProfessionalResume(resumeText, jobText);
+        var result = buildResume(resumeText, jobText);
 
-        // Display matched keywords
-        var matchedEl = document.getElementById('matched-keywords');
-        var matchedEmpty = document.getElementById('matched-empty');
-        if(matchedEl){
-          if(result.matched.length > 0){
-            matchedEl.innerHTML = result.matched.map(function(kw){
-              return '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;background:#dcfce7;color:#166534;margin:2px;">' + kw + '</span>';
-            }).join('');
-            if(matchedEmpty) matchedEmpty.style.display = 'none';
+        // Display the resume
+        var outputEl = document.getElementById('resume-output-text');
+        if (outputEl) outputEl.textContent = result.resume;
+
+        var outputContainer = document.getElementById('resume-output');
+        if (outputContainer) outputContainer.style.display = 'block';
+
+        // Display keyword analysis
+        var analysisEl = document.getElementById('resume-analysis');
+        if (analysisEl) {
+          var html = '<div style="margin-top:16px;">';
+          html += '<h4 style="margin-bottom:8px;">Keyword Match Analysis</h4>';
+          if (result.jobTitle) html += '<p><strong>Target Role:</strong> ' + result.jobTitle + '</p>';
+          if (result.company) html += '<p><strong>Target Company:</strong> ' + result.company + '</p>';
+          html += '<p style="margin-top:8px;"><strong>Matched Keywords (' + result.matched.length + '):</strong></p>';
+          if (result.matched.length > 0) {
+            html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0;">';
+            result.matched.forEach(function(kw) {
+              html += '<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:4px;font-size:13px;">' + kw + '</span>';
+            });
+            html += '</div>';
           } else {
-            matchedEl.innerHTML = '';
-            if(matchedEmpty) matchedEmpty.style.display = 'block';
+            html += '<p style="color:#94a3b8;font-size:13px;">No keyword matches found.</p>';
           }
-        }
-
-        // Display missing keywords
-        var missingEl = document.getElementById('missing-keywords');
-        var missingEmpty = document.getElementById('missing-empty');
-        if(missingEl){
-          if(result.missing.length > 0){
-            missingEl.innerHTML = result.missing.map(function(kw){
-              return '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;background:#fee2e2;color:#991b1b;margin:2px;">' + kw + '</span>';
-            }).join('');
-            if(missingEmpty) missingEmpty.style.display = 'none';
-          } else {
-            missingEl.innerHTML = '';
-            if(missingEmpty){ missingEmpty.textContent = 'All keywords matched'; missingEmpty.style.display = 'block'; }
+          html += '<p style="margin-top:8px;"><strong>Missing Keywords (' + result.missing.length + '):</strong></p>';
+          if (result.missing.length > 0) {
+            html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0;">';
+            result.missing.forEach(function(kw) {
+              html += '<span style="background:#fef2f2;color:#991b1b;padding:2px 8px;border-radius:4px;font-size:13px;">' + kw + '</span>';
+            });
+            html += '</div>';
+            html += '<p style="color:#64748b;font-size:12px;margin-top:6px;">Consider adding these to your resume where they truthfully apply to your experience.</p>';
           }
+          html += '</div>';
+          analysisEl.innerHTML = html;
         }
-
-        // Display tailored resume
-        var outputEl = document.getElementById('tailored-resume-output');
-        if(outputEl){
-          outputEl.textContent = result.resume;
-        }
-
-        // Show output section
-        var outputSection = document.getElementById('resume-output');
-        if(outputSection) outputSection.style.display = 'block';
-
-        // Wire up copy button
-        var copyBtn = document.getElementById('resume-copy-btn');
-        if(copyBtn){
-          copyBtn.onclick = function(){
-            var text = document.getElementById('tailored-resume-output').textContent;
-            var confirmEl = document.getElementById('resume-copy-confirm');
-            if(navigator.clipboard && navigator.clipboard.writeText){
-              navigator.clipboard.writeText(text).then(function(){
-                if(confirmEl){ confirmEl.textContent = 'Copied to clipboard'; confirmEl.style.display = 'inline'; }
-                setTimeout(function(){ if(confirmEl) confirmEl.style.display = 'none'; }, 2500);
-              });
-            } else {
-              var ta = document.createElement('textarea');
-              ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
-              document.body.appendChild(ta); ta.select(); document.execCommand('copy');
-              document.body.removeChild(ta);
-              if(confirmEl){ confirmEl.textContent = 'Copied to clipboard'; confirmEl.style.display = 'inline'; }
-              setTimeout(function(){ if(confirmEl) confirmEl.style.display = 'none'; }, 2500);
-            }
-          };
-        }
-
-        outputSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-      } catch(err) {
-        showError('Error generating resume: ' + err.message);
+      } catch (e) {
+        showError('Error generating resume: ' + e.message);
       }
 
-      btn.disabled = false;
-      if(spinner) spinner.style.display = 'none';
-      if(btnText) btnText.textContent = 'Generate Tailored Resume';
-    }, 1200);
+      // Reset button
+      if (btn) btn.disabled = false;
+      if (spinner) spinner.style.display = 'none';
+      if (btnText) btnText.textContent = 'Generate Tailored Resume';
+    }, 300);
   });
+
+  // Copy button
+  var copyBtn = document.getElementById('resume-copy-btn');
+  if (copyBtn) {
+    copyBtn.addEventListener('click', function() {
+      var text = document.getElementById('resume-output-text').textContent;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function() {
+          copyBtn.textContent = 'Copied!';
+          setTimeout(function() { copyBtn.textContent = 'Copy to Clipboard'; }, 2000);
+        });
+      } else {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        copyBtn.textContent = 'Copied!';
+        setTimeout(function() { copyBtn.textContent = 'Copy to Clipboard'; }, 2000);
+      }
+    });
+  }
+
 })();
 
 </script>
