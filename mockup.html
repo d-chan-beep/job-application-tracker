@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NurseDashboard</title>
+  <style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f4f6f9; color: #1a1a2e; font-size: 15px; line-height: 1.6; }
+
+/* NAVBAR */
+.navbar { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: #0a1f44; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; z-index: 100; border-bottom: 2px solid #c9a84c; }
+.navbar-logo { font-size: 20px; font-weight: 700; color: #ffffff; letter-spacing: 0.02em; }
+.navbar-right { display: flex; align-items: center; gap: 16px; }
+.badge-basic { background: #c9a84c; color: #0a1f44; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; letter-spacing: 0.05em; text-transform: uppercase; }
+.navbar-welcome { color: #ffffff; font-size: 14px; font-weight: 500; }
+
+/* SIDEBAR */
+.sidebar { position: fixed; top: 60px; left: 0; bottom: 0; width: 250px; background: #0a1f44; overflow-y: auto; padding: 20px 0; z-index: 90; }
+.sidebar-section { margin-bottom: 8px; }
+.sidebar-header { color: #c9a84c; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 12px 24px 6px; }
+.sidebar-link { display: block; color: #a8b4c8; font-size: 14px; padding: 9px 24px 9px 32px; text-decoration: none; transition: all 0.15s ease; border-left: 3px solid transparent; }
+.sidebar-link:hover { color: #ffffff; background: rgba(201,168,76,0.08); border-left-color: #c9a84c; }
+.sidebar-link.active { color: #ffffff; background: rgba(201,168,76,0.12); border-left-color: #c9a84c; font-weight: 600; }
+
+/* MAIN CONTENT */
+.main-content { margin-left: 250px; margin-top: 60px; padding: 28px 32px; min-height: calc(100vh - 60px); }
+
+/* WELCOME BANNER */
+.welcome-banner { background: linear-gradient(135deg, #0a1f44 0%, #122c5e 60%, #1a3a72 100%); border-radius: 14px; padding: 28px 32px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.welcome-heading { color: #ffffff; font-size: 26px; font-weight: 700; margin-bottom: 6px; }
+.welcome-sub { color: #c2cfe0; font-size: 15px; }
+.streak-badge { background: linear-gradient(135deg, #c9a84c, #e0c06a); color: #0a1f44; font-size: 14px; font-weight: 700; padding: 10px 20px; border-radius: 30px; white-space: nowrap; box-shadow: 0 2px 8px rgba(201,168,76,0.3); }
+
+/* ALERT BANNER */
+.alert-banner { background: #fef9e7; border-left: 4px solid #c9a84c; border-radius: 8px; padding: 14px 20px; font-size: 14px; color: #5a4a1a; margin-bottom: 24px; line-height: 1.5; }
+.alert-banner strong { color: #0a1f44; }
+
+/* STATS GRID */
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-bottom: 24px; }
+.stat-card { background: #ffffff; border-radius: 12px; padding: 22px 20px; border-top: 3px solid #c9a84c; box-shadow: 0 1px 4px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.03); }
+.stat-label { font-size: 13px; color: #6b7a90; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; }
+.stat-value { font-size: 36px; font-weight: 700; color: #0a1f44; line-height: 1.1; margin-bottom: 4px; }
+.stat-red { color: #d32f2f; }
+.stat-green { color: #2e7d32; }
+.stat-sub { font-size: 13px; color: #8895a7; }
+
+/* QUICK ACTIONS */
+.quick-actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 28px; }
+.action-btn { background: linear-gradient(135deg, #c9a84c, #d4b45c); color: #0a1f44; font-size: 14px; font-weight: 700; padding: 14px 16px; border: none; border-radius: 10px; cursor: pointer; transition: all 0.15s ease; box-shadow: 0 2px 6px rgba(201,168,76,0.25); }
+.action-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(201,168,76,0.35); }
+
+/* TABLE CARD */
+.table-card { background: #ffffff; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.03); margin-bottom: 28px; overflow: hidden; }
+.table-card-header { padding: 18px 22px; border-bottom: 1px solid #eef0f4; }
+.table-card-title { font-size: 17px; font-weight: 700; color: #0a1f44; }
+.data-table { width: 100%; border-collapse: collapse; }
+.data-table th { text-align: left; font-size: 12px; font-weight: 700; color: #6b7a90; text-transform: uppercase; letter-spacing: 0.05em; padding: 12px 22px; border-bottom: 1px solid #eef0f4; background: #fafbfc; }
+.data-table td { padding: 14px 22px; border-bottom: 1px solid #f2f3f6; font-size: 14px; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: #f8f9fc; }
+.job-company { font-weight: 600; color: #0a1f44; }
+.job-role { font-size: 13px; color: #7a8698; margin-top: 2px; }
+
+/* STATUS PILLS */
+.status-pill { display: inline-block; font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 20px; }
+.status-applied { background: #e3ecfa; color: #1a5bb5; }
+.status-interview { background: #e0f5e4; color: #1b7a2e; }
+.status-pending { background: #fef3cd; color: #856404; }
+.status-rejected { background: #fde2e2; color: #b71c1c; }
+
+/* TWO-COL GRID */
+.two-col-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 28px; }
+.section-title { font-size: 17px; font-weight: 700; color: #0a1f44; margin-bottom: 16px; }
+
+/* COMPLIANCE CARDS */
+.compliance-card { background: #ffffff; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); margin-bottom: 16px; overflow: hidden; }
+.compliance-card-header { padding: 14px 18px; border-bottom: 1px solid #eef0f4; display: flex; align-items: center; justify-content: space-between; }
+.compliance-card-title { font-size: 15px; font-weight: 600; color: #0a1f44; }
+.compliance-item { padding: 12px 18px; border-bottom: 1px solid #f5f6f8; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.compliance-item:last-child { border-bottom: none; }
+.compliance-item-name { font-size: 14px; font-weight: 600; color: #0a1f44; min-width: 140px; }
+.compliance-item-detail { font-size: 13px; color: #7a8698; flex: 1; }
+.compliance-item-badges { display: flex; gap: 6px; }
+.compliance-badge { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; }
+.badge-red { background: #fde2e2; color: #b71c1c; }
+.badge-green { background: #e0f5e4; color: #1b7a2e; }
+.badge-yellow { background: #fef3cd; color: #856404; }
+.badge-gold { background: rgba(201,168,76,0.15); color: #9a7d2e; }
+
+/* COMMUNITY CARD */
+.community-card { background: #0a1f44; border-radius: 12px; padding: 22px; box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+.community-card-header { margin-bottom: 16px; }
+.community-title { color: #c9a84c; font-size: 18px; font-weight: 700; }
+.community-post { background: rgba(255,255,255,0.06); border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; }
+.community-post:last-child { margin-bottom: 0; }
+.post-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.post-author { color: #c9a84c; font-size: 13px; font-weight: 700; }
+.post-time { color: #6b7a90; font-size: 12px; }
+.post-body { color: #c2cfe0; font-size: 13px; line-height: 1.5; }
+
+/* UPGRADE BANNER */
+.upgrade-banner { background: linear-gradient(135deg, #c9a84c 0%, #d4b85c 50%, #e0c86a 100%); border-radius: 14px; padding: 28px 32px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.upgrade-text { font-size: 18px; font-weight: 700; color: #0a1f44; }
+.upgrade-btn { background: #0a1f44; color: #ffffff; font-size: 14px; font-weight: 700; padding: 12px 28px; border: none; border-radius: 8px; cursor: pointer; transition: all 0.15s ease; white-space: nowrap; }
+.upgrade-btn:hover { background: #122c5e; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(10,31,68,0.3); }
+
+/* RESPONSIVE */
+@media (max-width: 1024px) {
+  .stats-grid, .quick-actions { grid-template-columns: repeat(2, 1fr); }
+  .two-col-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 768px) {
+  .sidebar { display: none; }
+  .main-content { margin-left: 0; }
+  .stats-grid, .quick-actions { grid-template-columns: 1fr; }
+  .welcome-banner { flex-direction: column; gap: 16px; text-align: center; }
+  .upgrade-banner { flex-direction: column; gap: 16px; text-align: center; }
+}
+  </style>
+</head>
+<body>
+<nav class="navbar"><div class="navbar-logo">NurseDashboard</div><div class="navbar-right"><span class="badge-basic">BASIC</span><span class="navbar-welcome">Welcome, Nurse</span></div></nav><div class="sidebar"><div class="sidebar-section"><div class="sidebar-header">CAREER</div><a href="#" class="sidebar-link active">Dashboard</a><a href="#" class="sidebar-link">Job Applications</a><a href="#" class="sidebar-link">Resume Tool</a><a href="#" class="sidebar-link">Cover Letters</a><a href="#" class="sidebar-link">Interview Prep</a></div><div class="sidebar-section"><div class="sidebar-header">COMPLIANCE</div><a href="#" class="sidebar-link">License Tracker</a><a href="#" class="sidebar-link">CEU Tracker</a><a href="#" class="sidebar-link">Vaccine Tracker</a><a href="#" class="sidebar-link">Certifications</a></div><div class="sidebar-section"><div class="sidebar-header">COMMUNITY</div><a href="#" class="sidebar-link">Nurse Community</a><a href="#" class="sidebar-link">Shift Swap Board</a></div><div class="sidebar-section"><div class="sidebar-header">ACCOUNT</div><a href="#" class="sidebar-link">My Profile</a><a href="#" class="sidebar-link">Settings</a></div></div><div class="main-content"><div class="welcome-banner"><div class="welcome-text"><h1 class="welcome-heading">Good morning, Nurse!</h1><p class="welcome-sub">You have 2 follow-ups due this week and 1 license expiring in 47 days.</p></div><div class="streak-badge">12-Day Streak</div></div><div class="alert-banner"><strong>License Renewal Reminder:</strong> Your California RN License expires in 47 days (May 2, 2026). Start your renewal now.</div><div class="stats-grid"><div class="stat-card"><div class="stat-label">Applications</div><div class="stat-value">8</div><div class="stat-sub">3 active this week</div></div><div class="stat-card"><div class="stat-label">Follow-Ups Due</div><div class="stat-value stat-red">2</div><div class="stat-sub">Due by March 22</div></div><div class="stat-card"><div class="stat-label">CEU Hours</div><div class="stat-value stat-green">18</div><div class="stat-sub">12 needed by May</div></div><div class="stat-card"><div class="stat-label">Credentials</div><div class="stat-value">4</div><div class="stat-sub">1 expiring soon</div></div></div><div class="quick-actions"><button class="action-btn">Add Application</button><button class="action-btn">Tailor Resume</button><button class="action-btn">Cover Letter</button><button class="action-btn">Interview Prep</button></div><div class="table-card"><div class="table-card-header"><h2 class="table-card-title">Job Applications</h2></div><table class="data-table"><thead><tr><th>Company / Role</th><th>Date Applied</th><th>Salary Target</th><th>Status</th><th>Follow-Up Date</th></tr></thead><tbody><tr><td><div class="job-company">Centene Corporation</div><div class="job-role">Concurrent Review RN -- Remote</div></td><td>Mar 15, 2026</td><td>$95,000</td><td><span class="status-pill status-applied">Applied</span></td><td>Mar 22, 2026</td></tr><tr><td><div class="job-company">Vivo HealthStaff</div><div class="job-role">Remote Case Management RN</div></td><td>Mar 15, 2026</td><td>$43-48/hr</td><td><span class="status-pill status-applied">Applied</span></td><td>Mar 22, 2026</td></tr><tr><td><div class="job-company">Personify Health</div><div class="job-role">Care Manager RN -- Remote</div></td><td>Mar 14, 2026</td><td>$90,000</td><td><span class="status-pill status-pending">Pending</span></td><td>Mar 21, 2026</td></tr><tr><td><div class="job-company">Molina Healthcare</div><div class="job-role">Utilization Management RN</div></td><td>Mar 10, 2026</td><td>$88,000</td><td><span class="status-pill status-interview">Interview</span></td><td>Scheduled</td></tr></tbody></table></div><div class="two-col-grid"><div class="compliance-section"><h2 class="section-title">Compliance Overview</h2><div class="compliance-card"><div class="compliance-card-header"><span class="compliance-card-title">License Tracker</span></div><div class="compliance-item"><div class="compliance-item-name">California RN License</div><div class="compliance-item-detail">Expires May 2, 2026</div><div class="compliance-item-badges"><span class="compliance-badge badge-red">47 days</span><span class="compliance-badge badge-warning">Action Needed</span></div></div></div><div class="compliance-card"><div class="compliance-card-header"><span class="compliance-card-title">CEU Tracker</span></div><div class="compliance-item"><div class="compliance-item-name">Pain Management CEU</div><div class="compliance-item-detail">6 hrs remaining</div><div class="compliance-item-badges"><span class="compliance-badge badge-yellow">In Progress</span></div></div><div class="compliance-item"><div class="compliance-item-name">Implicit Bias Training</div><div class="compliance-item-detail">All hours logged</div><div class="compliance-item-badges"><span class="compliance-badge badge-green">Complete</span></div></div></div><div class="compliance-card"><div class="compliance-card-header"><span class="compliance-card-title">Certifications and Vaccines</span></div><div class="compliance-item"><div class="compliance-item-name">BLS Certification</div><div class="compliance-item-detail">Expires Dec 2026</div><div class="compliance-item-badges"><span class="compliance-badge badge-green">Current</span></div></div><div class="compliance-item"><div class="compliance-item-name">Flu Vaccine</div><div class="compliance-item-detail">Expires Oct 2026</div><div class="compliance-item-badges"><span class="compliance-badge badge-green">Current</span></div></div><div class="compliance-item"><div class="compliance-item-name">TB Test</div><div class="compliance-item-detail">Expires Sep 2026</div><div class="compliance-item-badges"><span class="compliance-badge badge-yellow">Due Soon</span></div></div></div></div><div class="community-card"><div class="community-card-header"><h2 class="community-title">Nurses Supporting Nurses</h2></div><div class="community-post"><div class="post-header"><span class="post-author">Sarah M.</span><span class="post-time">2 hours ago</span></div><p class="post-body">Just landed a remote case management position! The resume tailoring tool made all the difference. Key tip: highlight your care coordination metrics.</p></div><div class="community-post"><div class="post-header"><span class="post-author">James R.</span><span class="post-time">5 hours ago</span></div><p class="post-body">Heads up -- California Board is processing renewals faster now. Mine took only 3 weeks. Apply early and double-check your CEU documentation.</p></div><div class="community-post"><div class="post-header"><span class="post-author">Maria L.</span><span class="post-time">Yesterday</span></div><p class="post-body">Interview tip for UM positions: Be ready to walk through a real case scenario. They want to see your clinical reasoning, not just textbook answers.</p></div></div></div><div class="upgrade-banner"><div class="upgrade-text"><h2 class="upgrade-heading">Unlock Pro -- AI Coach + Persistent Memory + Work Calendar</h2><p class="upgrade-sub">Get the full suite of tools to accelerate your nursing career.</p></div><button class="upgrade-btn">Upgrade to Pro</button></div></div>
+</body>
+</html>
