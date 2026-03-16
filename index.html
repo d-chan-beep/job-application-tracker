@@ -1750,42 +1750,45 @@ render();
         var result = buildResume(resumeText, jobText);
 
         // Display the resume
-        var outputEl = document.getElementById('resume-output-text');
+        var outputEl = document.getElementById('tailored-resume-output');
         if (outputEl) outputEl.textContent = result.resume;
 
         var outputContainer = document.getElementById('resume-output');
         if (outputContainer) outputContainer.style.display = 'block';
 
         // Display keyword analysis
-        var analysisEl = document.getElementById('resume-analysis');
-        if (analysisEl) {
-          var html = '<div style="margin-top:16px;">';
-          html += '<h4 style="margin-bottom:8px;">Keyword Match Analysis</h4>';
-          if (result.jobTitle) html += '<p><strong>Target Role:</strong> ' + result.jobTitle + '</p>';
-          if (result.company) html += '<p><strong>Target Company:</strong> ' + result.company + '</p>';
-          html += '<p style="margin-top:8px;"><strong>Matched Keywords (' + result.matched.length + '):</strong></p>';
+        var matchedEl = document.getElementById('matched-keywords');
+        var matchedEmpty = document.getElementById('matched-empty');
+        var missingEl = document.getElementById('missing-keywords');
+        var missingEmpty = document.getElementById('missing-empty');
+
+        if (matchedEl) {
           if (result.matched.length > 0) {
-            html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0;">';
-            result.matched.forEach(function(kw) {
-              html += '<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:4px;font-size:13px;">' + kw + '</span>';
-            });
-            html += '</div>';
+            matchedEl.innerHTML = result.matched.map(function(kw) {
+              return '<span style="background:#dcfce7;color:#166534;padding:3px 10px;border-radius:999px;font-size:0.82rem;font-weight:600;">' + kw + '</span>';
+            }).join('');
+            matchedEl.style.display = 'flex';
+            if (matchedEmpty) matchedEmpty.style.display = 'none';
           } else {
-            html += '<p style="color:#94a3b8;font-size:13px;">No keyword matches found.</p>';
+            matchedEl.style.display = 'none';
+            if (matchedEmpty) matchedEmpty.style.display = 'block';
           }
-          html += '<p style="margin-top:8px;"><strong>Missing Keywords (' + result.missing.length + '):</strong></p>';
-          if (result.missing.length > 0) {
-            html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0;">';
-            result.missing.forEach(function(kw) {
-              html += '<span style="background:#fef2f2;color:#991b1b;padding:2px 8px;border-radius:4px;font-size:13px;">' + kw + '</span>';
-            });
-            html += '</div>';
-            html += '<p style="color:#64748b;font-size:12px;margin-top:6px;">Consider adding these to your resume where they truthfully apply to your experience.</p>';
-          }
-          html += '</div>';
-          analysisEl.innerHTML = html;
         }
-      } catch (e) {
+
+        if (missingEl) {
+          if (result.missing.length > 0) {
+            missingEl.innerHTML = result.missing.map(function(kw) {
+              return '<span style="background:#fef2f2;color:#991b1b;padding:3px 10px;border-radius:999px;font-size:0.82rem;font-weight:600;">' + kw + '</span>';
+            }).join('');
+            missingEl.style.display = 'flex';
+            if (missingEmpty) missingEmpty.style.display = 'none';
+          } else {
+            missingEl.style.display = 'none';
+            if (missingEmpty) missingEmpty.style.display = 'block';
+          }
+        }
+
+        } catch (e) {
         showError('Error generating resume: ' + e.message);
       }
 
@@ -1800,7 +1803,7 @@ render();
   var copyBtn = document.getElementById('resume-copy-btn');
   if (copyBtn) {
     copyBtn.addEventListener('click', function() {
-      var text = document.getElementById('resume-output-text').textContent;
+      var text = document.getElementById('tailored-resume-output').textContent;
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(text).then(function() {
           copyBtn.textContent = 'Copied!';
