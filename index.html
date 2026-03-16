@@ -821,6 +821,1714 @@
       </div>
       <div class="form-row">
         <div class="form-group">
+          <label for="f-jobposting" style="display:flex;justify-content:space-between;align-items:center;">Save Job Posting (Recommended) <span style="font-size:11px;font-weight:400;color:#94a3b8;">Companies often remove postings before interviews</span></label>
+          <textarea id="f-jobposting" placeholder="Paste the full job posting text here... This will be available for Resume Tool, Cover Letter, and Interview Prep." style="min-height:120px;font-size:0.82rem;"></textarea>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="f-notes">Notes</label>
+          <textarea id="f-notes" placeholder="Optional notes..."></textarea>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" id="dash-modal-cancel">Cancel</button>
+        <button type="submit" class="btn-save" id="dash-modal-save">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  // Expose global refresh for cross-tab sync
+  window.refreshDashboard = function() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if(raw) {
+        var arr = JSON.parse(raw);
+        if(Array.isArray(arr)) apps = arr;
+      }
+    } catch(e){}
+    render();
+  };
+
+  // Also refresh when switching to Dashboard tab
+  document.addEventListener('click', function(e){
+    if(e.target && e.target.getAttribute && e.target.getAttribute('data-tab') === 'dashboard'){
+      setTimeout(window.refreshDashboard, 50);
+    }
+  });
+
+CTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Job Application Tracker</title>
+  <style>
+    :root {
+      --navy: #1e293b;
+      --navy-light: #2d3f55;
+      --blue: #3b82f6;
+      --blue-dark: #2563eb;
+      --blue-light: #eff6ff;
+      --green: #22c55e;
+      --green-light: #f0fdf4;
+      --yellow: #eab308;
+      --yellow-light: #fefce8;
+      --red: #ef4444;
+      --red-light: #fef2f2;
+      --gray: #6b7280;
+      --gray-light: #f9fafb;
+      --gray-border: #e5e7eb;
+      --white: #ffffff;
+      --text-primary: #111827;
+      --text-secondary: #6b7280;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05);
+      --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.05);
+      --shadow-lg: 0 10px 25px rgba(0,0,0,0.1), 0 4px 10px rgba(0,0,0,0.06);
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --transition: 0.18s ease;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      height: 100%;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f1f5f9;
+      color: var(--text-primary);
+      font-size: 15px;
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    /* ---- BADGE COLORS ---- */
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+    .badge-applied    { background: #dbeafe; color: #1d4ed8; }
+    .badge-interview  { background: #fef9c3; color: #92400e; }
+    .badge-offer      { background: #dcfce7; color: #166534; }
+    .badge-rejected   { background: #fee2e2; color: #991b1b; }
+    .badge-withdrawn  { background: #f3f4f6; color: #374151; }
+
+    /* ---- CARD ---- */
+    .card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-md);
+      padding: 24px;
+    }
+
+    /* ---- BUTTONS ---- */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 9px 18px;
+      border-radius: var(--radius-sm);
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: inherit;
+      transition: background var(--transition), opacity var(--transition), box-shadow var(--transition);
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .btn:active { opacity: 0.88; }
+    .btn-primary {
+      background: var(--blue);
+      color: var(--white);
+    }
+    .btn-primary:hover { background: var(--blue-dark); }
+    .btn-secondary {
+      background: var(--gray-light);
+      color: var(--text-primary);
+      border: 1px solid var(--gray-border);
+    }
+    .btn-secondary:hover { background: #e9ecef; }
+    .btn-danger {
+      background: var(--red);
+      color: var(--white);
+    }
+    .btn-danger:hover { background: #dc2626; }
+    .btn-sm { padding: 6px 12px; font-size: 13px; }
+    .btn-full { width: 100%; }
+
+    /* ---- FORM ELEMENTS ---- */
+    input, textarea, select {
+      font-family: inherit;
+      font-size: 14px;
+      color: var(--text-primary);
+      background: var(--white);
+      border: 1px solid var(--gray-border);
+      border-radius: var(--radius-sm);
+      padding: 8px 12px;
+      transition: border-color var(--transition), box-shadow var(--transition);
+      outline: none;
+      width: 100%;
+    }
+    input:focus, textarea:focus, select:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+    }
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    /* ==============================
+       PASSWORD OVERLAY
+    ============================== */
+    #password-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .pass-card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 25px 60px rgba(0,0,0,0.4);
+      padding: 44px 40px 40px;
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+    }
+
+    .pass-card .pass-icon {
+      width: 54px;
+      height: 54px;
+      background: var(--blue-light);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+    }
+
+    .pass-card .pass-icon svg {
+      width: 26px;
+      height: 26px;
+      stroke: var(--blue);
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .pass-card h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 6px;
+      line-height: 1.3;
+    }
+
+    .pass-card .pass-subtitle {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 28px;
+    }
+
+    .pass-card .pass-input-wrap {
+      position: relative;
+      margin-bottom: 14px;
+    }
+
+    .pass-card .pass-input-wrap input {
+      padding: 11px 44px 11px 14px;
+      font-size: 15px;
+      border-radius: var(--radius-md);
+      border: 1.5px solid var(--gray-border);
+      text-align: left;
+    }
+
+    .pass-card .pass-input-wrap input:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+    }
+
+    .pass-toggle {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .pass-toggle svg {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .pass-card .btn-submit {
+      width: 100%;
+      padding: 12px;
+      font-size: 15px;
+      border-radius: var(--radius-md);
+      margin-top: 4px;
+    }
+
+    #pass-error {
+      display: none;
+      margin-top: 12px;
+      padding: 10px 14px;
+      background: #fee2e2;
+      color: #991b1b;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 500;
+      text-align: left;
+      border-left: 3px solid var(--red);
+    }
+
+    /* ==============================
+       APP WRAPPER
+    ============================== */
+    #app-wrapper {
+      display: none;
+      min-height: 100vh;
+      flex-direction: column;
+    }
+
+    /* ==============================
+       HEADER
+    ============================== */
+    #app-header {
+      background: var(--navy);
+      padding: 0 24px;
+      height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+    }
+
+    #app-header .header-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--white);
+      letter-spacing: 0.01em;
+    }
+
+    #app-header .header-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #app-header .header-logout {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: rgba(255,255,255,0.75);
+      font-size: 13px;
+      padding: 5px 12px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-family: inherit;
+      font-weight: 500;
+      transition: background var(--transition), color var(--transition);
+    }
+    #app-header .header-logout:hover {
+      background: rgba(255,255,255,0.18);
+      color: var(--white);
+    }
+
+    /* ==============================
+       TAB NAV
+    ============================== */
+    #tab-nav {
+      background: var(--navy);
+      border-top: 1px solid rgba(255,255,255,0.07);
+      padding: 0 24px;
+      display: flex;
+      align-items: flex-end;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      gap: 2px;
+    }
+
+    #tab-nav::-webkit-scrollbar {
+      display: none;
+    }
+
+    .tab-btn {
+      background: none;
+      border: none;
+      border-bottom: 3px solid transparent;
+      color: rgba(255,255,255,0.58);
+      font-size: 14px;
+      font-weight: 500;
+      font-family: inherit;
+      padding: 13px 16px 11px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: color var(--transition), border-color var(--transition);
+      position: relative;
+      flex-shrink: 0;
+      letter-spacing: 0.01em;
+    }
+
+    .tab-btn:hover {
+      color: rgba(255,255,255,0.85);
+    }
+
+    .tab-btn.active {
+      color: var(--white);
+      border-bottom-color: var(--blue);
+      font-weight: 600;
+    }
+
+    /* ==============================
+       MAIN CONTENT AREA
+    ============================== */
+    #tab-content {
+      flex: 1;
+      padding: 28px 24px;
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .tab-panel {
+      display: none;
+    }
+    .tab-panel.active {
+      display: block;
+    }
+
+    /* ==============================
+       RESPONSIVE
+    ============================== */
+    @media (max-width: 600px) {
+      #app-header {
+        padding: 0 16px;
+        height: 52px;
+      }
+      #app-header .header-title {
+        font-size: 15px;
+      }
+      #tab-nav {
+        padding: 0 12px;
+        gap: 0;
+      }
+      .tab-btn {
+        font-size: 13px;
+        padding: 12px 12px 10px;
+      }
+      #tab-content {
+        padding: 20px 14px;
+      }
+      .pass-card {
+        padding: 32px 24px 28px;
+      }
+    }
+
+    @media (max-width: 380px) {
+      .tab-btn {
+        font-size: 12px;
+        padding: 11px 10px 9px;
+      }
+      .pass-card h1 {
+        font-size: 19px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ========================
+       PASSWORD OVERLAY
+  ========================= -->
+  <div id="password-overlay">
+    <div class="pass-card">
+      <div class="pass-icon">
+        <svg viewBox="0 0 24 24">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+        </svg>
+      </div>
+      <h1>Job Application Tracker</h1>
+      <p class="pass-subtitle">Enter password to continue</p>
+      <div class="pass-input-wrap">
+        <input
+          type="password"
+          id="pass-input"
+          placeholder="Password"
+          autocomplete="current-password"
+          spellcheck="false"
+        >
+        <button class="pass-toggle" id="pass-toggle" type="button" aria-label="Toggle password visibility">
+          <svg id="eye-icon" viewBox="0 0 24 24">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+        </button>
+      </div>
+      <button class="btn btn-primary btn-submit" id="pass-submit" type="button">Unlock</button>
+      <div id="pass-error">Incorrect password. Please try again.</div>
+    </div>
+  </div>
+
+  <!-- ========================
+       MAIN APP
+  ========================= -->
+  <div id="app-wrapper">
+
+    <!-- HEADER -->
+    <header id="app-header">
+      <span class="header-title">Job Application Tracker</span>
+      <div class="header-right">
+        <button class="header-logout" id="logout-btn" type="button">Lock</button>
+      </div>
+    </header>
+
+    <!-- TAB NAV -->
+    <nav id="tab-nav">
+      <button class="tab-btn active" data-tab="dashboard" type="button">Dashboard</button>
+      <button class="tab-btn" data-tab="resume" type="button">Resume Tool</button>
+      <button class="tab-btn" data-tab="coverletter" type="button">Cover Letter</button>
+      <button class="tab-btn" data-tab="followup" type="button">Follow-Up</button>
+      <button class="tab-btn" data-tab="interview" type="button">Interview Prep</button>
+    </nav>
+
+    <main>
+      <div class="tab-panel active" id="panel-dashboard">
+<style>
+#panel-dashboard {
+  font-family: Arial, sans-serif;
+  padding: 20px;
+  background: #f5f7fa;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+#panel-dashboard .dash-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+#panel-dashboard .dash-header h2 {
+  margin: 0;
+  font-size: 1.4rem;
+  color: #1a1a2e;
+}
+#panel-dashboard .btn-add {
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  padding: 8px 18px;
+  border-radius: 5px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+#panel-dashboard .btn-add:hover {
+  background: #1d4ed8;
+}
+#panel-dashboard .metrics-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+#panel-dashboard .metric-card {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  padding: 14px 22px;
+  min-width: 90px;
+  flex: 1 1 90px;
+  text-align: center;
+}
+#panel-dashboard .metric-card .metric-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+  color: #555;
+}
+#panel-dashboard .metric-card .metric-count {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+}
+#panel-dashboard .metric-total .metric-count { color: #1a1a2e; }
+#panel-dashboard .metric-applied .metric-count { color: #2563eb; }
+#panel-dashboard .metric-interview .metric-count { color: #d97706; }
+#panel-dashboard .metric-offer .metric-count { color: #16a34a; }
+#panel-dashboard .metric-rejected .metric-count { color: #dc2626; }
+#panel-dashboard .metric-withdrawn .metric-count { color: #6b7280; }
+#panel-dashboard .table-wrap {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+#panel-dashboard table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 900px;
+  font-size: 0.875rem;
+}
+#panel-dashboard thead tr {
+  background: #f1f5f9;
+  border-bottom: 2px solid #e2e8f0;
+}
+#panel-dashboard thead th {
+  padding: 11px 13px;
+  text-align: left;
+  font-weight: 700;
+  color: #374151;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+#panel-dashboard tbody tr {
+  border-bottom: 1px solid #e9edf2;
+  transition: background 0.12s;
+}
+#panel-dashboard tbody tr:hover {
+  background: #f8fafc;
+}
+#panel-dashboard tbody td {
+  padding: 10px 13px;
+  color: #1f2937;
+  vertical-align: middle;
+}
+#panel-dashboard .badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+#panel-dashboard .badge-applied { background: #dbeafe; color: #1e40af; }
+#panel-dashboard .badge-interview { background: #fef3c7; color: #92400e; }
+#panel-dashboard .badge-offer { background: #dcfce7; color: #14532d; }
+#panel-dashboard .badge-rejected { background: #fee2e2; color: #991b1b; }
+#panel-dashboard .badge-withdrawn { background: #f3f4f6; color: #374151; }
+#panel-dashboard .overdue-tag {
+  color: #dc2626;
+  font-weight: 700;
+  font-size: 0.72rem;
+  margin-left: 5px;
+}
+#panel-dashboard .action-link {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 3px 6px;
+  border-radius: 4px;
+  text-decoration: underline;
+}
+#panel-dashboard .action-edit { color: #2563eb; }
+#panel-dashboard .action-edit:hover { color: #1d4ed8; }
+#panel-dashboard .action-delete { color: #dc2626; margin-left: 6px; }
+#panel-dashboard .action-delete:hover { color: #991b1b; }
+#panel-dashboard .notes-cell {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #6b7280;
+  font-size: 0.82rem;
+}
+#panel-dashboard .modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+#panel-dashboard .modal-overlay.open {
+  display: flex;
+}
+#panel-dashboard .modal-box {
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  padding: 28px 28px 22px 28px;
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  box-sizing: border-box;
+}
+#panel-dashboard .modal-box h3 {
+  margin: 0 0 20px 0;
+  font-size: 1.15rem;
+  color: #1a1a2e;
+}
+#panel-dashboard .form-row {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+#panel-dashboard .form-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+#panel-dashboard .form-group label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #374151;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+#panel-dashboard .form-group input,
+#panel-dashboard .form-group select,
+#panel-dashboard .form-group textarea {
+  padding: 7px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 5px;
+  font-size: 0.9rem;
+  color: #1f2937;
+  background: #fafafa;
+  outline: none;
+  font-family: Arial, sans-serif;
+  width: 100%;
+  box-sizing: border-box;
+}
+#panel-dashboard .form-group input:focus,
+#panel-dashboard .form-group select:focus,
+#panel-dashboard .form-group textarea:focus {
+  border-color: #2563eb;
+  background: #fff;
+}
+#panel-dashboard .form-group textarea {
+  resize: vertical;
+  min-height: 64px;
+}
+#panel-dashboard .modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+#panel-dashboard .btn-save {
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  padding: 8px 20px;
+  border-radius: 5px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+#panel-dashboard .btn-save:hover { background: #1d4ed8; }
+#panel-dashboard .btn-cancel {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  padding: 8px 18px;
+  border-radius: 5px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+#panel-dashboard .btn-cancel:hover { background: #e5e7eb; }
+#panel-dashboard .empty-msg {
+  text-align: center;
+  color: #9ca3af;
+  padding: 30px 0;
+  font-size: 0.95rem;
+}
+@media (max-width: 600px) {
+  #panel-dashboard { padding: 10px; }
+  #panel-dashboard .form-row { flex-direction: column; gap: 0; }
+  #panel-dashboard .modal-box { padding: 16px 10px 14px 10px; }
+}
+</style>
+
+<div class="dash-header">
+  <h2>Job Application Tracker</h2>
+  <button class="btn-add" id="dash-btn-add">+ Add Application</button>
+</div>
+
+<div class="metrics-row" id="dash-metrics"></div>
+
+<div class="table-wrap">
+  <table id="dash-table">
+    <thead>
+      <tr>
+        <th>Company</th>
+        <th>Role</th>
+        <th>Date Applied</th>
+        <th>Posted Salary</th>
+        <th>Requested</th>
+        <th>Status</th>
+        <th>Follow-Up Date</th>
+        <th>Follow-Up Sent</th>
+        <th>Notes</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="dash-tbody"></tbody>
+  </table>
+</div>
+
+<div class="modal-overlay" id="dash-modal-overlay">
+  <div class="modal-box">
+    <h3 id="dash-modal-title">Add Application</h3>
+    <form id="dash-form" autocomplete="off">
+      <input type="hidden" id="f-id">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="f-company">Company</label>
+          <input type="text" id="f-company" placeholder="Company name" required>
+        </div>
+        <div class="form-group">
+          <label for="f-role">Role</label>
+          <input type="text" id="f-role" placeholder="Job title" required>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="f-date">Date Applied</label>
+          <input type="date" id="f-date" required>
+        </div>
+        <div class="form-group">
+          <label for="f-status">Status</label>
+          <select id="f-status">
+            <option value="Applied">Applied</option>
+            <option value="Interview">Interview</option>
+            <option value="Offer">Offer</option>
+            <option value="Rejected">Rejected</option>
+            <option value="Withdrawn">Withdrawn</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="f-posted">Posted Salary</label>
+          <input type="text" id="f-posted" placeholder="e.g. $50,000/yr or Unknown">
+        </div>
+        <div class="form-group">
+          <label for="f-requested">Requested Salary</label>
+          <input type="text" id="f-requested" placeholder="e.g. $95,000/yr">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="f-followdate">Follow-Up Date</label>
+          <input type="date" id="f-followdate">
+        </div>
+        <div class="form-group">
+          <label for="f-followsent">Follow-Up Sent</label>
+          <select id="f-followsent">
+            <option value="No">No</option>
+            <option value="Yes">Yes</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="f-jobposting" style="display:flex;justify-content:space-between;align-items:center;">Save Job Posting (Recommended) <span style="font-size:11px;font-weight:400;color:#94a3b8;">Companies often remove postings before interviews</span></label>
+          <textarea id="f-jobposting" placeholder="Paste the full job posting text here... This will be available for Resume Tool, Cover Letter, and Interview Prep." style="min-height:120px;font-size:0.82rem;"></textarea>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="f-notes">Notes</label>
+          <textarea id="f-notes" placeholder="Optional notes..."></textarea>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" id="dash-modal-cancel">Cancel</button>
+        <button type="submit" class="btn-save" id="dash-modal-save">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>CTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Job Application Tracker</title>
+  <style>
+    :root {
+      --navy: #1e293b;
+      --navy-light: #2d3f55;
+      --blue: #3b82f6;
+      --blue-dark: #2563eb;
+      --blue-light: #eff6ff;
+      --green: #22c55e;
+      --green-light: #f0fdf4;
+      --yellow: #eab308;
+      --yellow-light: #fefce8;
+      --red: #ef4444;
+      --red-light: #fef2f2;
+      --gray: #6b7280;
+      --gray-light: #f9fafb;
+      --gray-border: #e5e7eb;
+      --white: #ffffff;
+      --text-primary: #111827;
+      --text-secondary: #6b7280;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05);
+      --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.05);
+      --shadow-lg: 0 10px 25px rgba(0,0,0,0.1), 0 4px 10px rgba(0,0,0,0.06);
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --transition: 0.18s ease;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      height: 100%;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f1f5f9;
+      color: var(--text-primary);
+      font-size: 15px;
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    /* ---- BADGE COLORS ---- */
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+    .badge-applied    { background: #dbeafe; color: #1d4ed8; }
+    .badge-interview  { background: #fef9c3; color: #92400e; }
+    .badge-offer      { background: #dcfce7; color: #166534; }
+    .badge-rejected   { background: #fee2e2; color: #991b1b; }
+    .badge-withdrawn  { background: #f3f4f6; color: #374151; }
+
+    /* ---- CARD ---- */
+    .card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-md);
+      padding: 24px;
+    }
+
+    /* ---- BUTTONS ---- */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 9px 18px;
+      border-radius: var(--radius-sm);
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: inherit;
+      transition: background var(--transition), opacity var(--transition), box-shadow var(--transition);
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .btn:active { opacity: 0.88; }
+    .btn-primary {
+      background: var(--blue);
+      color: var(--white);
+    }
+    .btn-primary:hover { background: var(--blue-dark); }
+    .btn-secondary {
+      background: var(--gray-light);
+      color: var(--text-primary);
+      border: 1px solid var(--gray-border);
+    }
+    .btn-secondary:hover { background: #e9ecef; }
+    .btn-danger {
+      background: var(--red);
+      color: var(--white);
+    }
+    .btn-danger:hover { background: #dc2626; }
+    .btn-sm { padding: 6px 12px; font-size: 13px; }
+    .btn-full { width: 100%; }
+
+    /* ---- FORM ELEMENTS ---- */
+    input, textarea, select {
+      font-family: inherit;
+      font-size: 14px;
+      color: var(--text-primary);
+      background: var(--white);
+      border: 1px solid var(--gray-border);
+      border-radius: var(--radius-sm);
+      padding: 8px 12px;
+      transition: border-color var(--transition), box-shadow var(--transition);
+      outline: none;
+      width: 100%;
+    }
+    input:focus, textarea:focus, select:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+    }
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    /* ==============================
+       PASSWORD OVERLAY
+    ============================== */
+    #password-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .pass-card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 25px 60px rgba(0,0,0,0.4);
+      padding: 44px 40px 40px;
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+    }
+
+    .pass-card .pass-icon {
+      width: 54px;
+      height: 54px;
+      background: var(--blue-light);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+    }
+
+    .pass-card .pass-icon svg {
+      width: 26px;
+      height: 26px;
+      stroke: var(--blue);
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .pass-card h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 6px;
+      line-height: 1.3;
+    }
+
+    .pass-card .pass-subtitle {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 28px;
+    }
+
+    .pass-card .pass-input-wrap {
+      position: relative;
+      margin-bottom: 14px;
+    }
+
+    .pass-card .pass-input-wrap input {
+      padding: 11px 44px 11px 14px;
+      font-size: 15px;
+      border-radius: var(--radius-md);
+      border: 1.5px solid var(--gray-border);
+      text-align: left;
+    }
+
+    .pass-card .pass-input-wrap input:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+    }
+
+    .pass-toggle {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .pass-toggle svg {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .pass-card .btn-submit {
+      width: 100%;
+      padding: 12px;
+      font-size: 15px;
+      border-radius: var(--radius-md);
+      margin-top: 4px;
+    }
+
+    #pass-error {
+      display: none;
+      margin-top: 12px;
+      padding: 10px 14px;
+      background: #fee2e2;
+      color: #991b1b;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 500;
+      text-align: left;
+      border-left: 3px solid var(--red);
+    }
+
+    /* ==============================
+       APP WRAPPER
+    ============================== */
+    #app-wrapper {
+      display: none;
+      min-height: 100vh;
+      flex-direction: column;
+    }
+
+    /* ==============================
+       HEADER
+    ============================== */
+    #app-header {
+      background: var(--navy);
+      padding: 0 24px;
+      height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+    }
+
+    #app-header .header-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--white);
+      letter-spacing: 0.01em;
+    }
+
+    #app-header .header-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #app-header .header-logout {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: rgba(255,255,255,0.75);
+      font-size: 13px;
+      padding: 5px 12px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-family: inherit;
+      font-weight: 500;
+      transition: background var(--transition), color var(--transition);
+    }
+    #app-header .header-logout:hover {
+      background: rgba(255,255,255,0.18);
+      color: var(--white);
+    }
+
+    /* ==============================
+       TAB NAV
+    ============================== */
+    #tab-nav {
+      background: var(--navy);
+      border-top: 1px solid rgba(255,255,255,0.07);
+      padding: 0 24px;
+      display: flex;
+      align-items: flex-end;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      gap: 2px;
+    }
+
+    #tab-nav::-webkit-scrollbar {
+      display: none;
+    }
+
+    .tab-btn {
+      background: none;
+      border: none;
+      border-bottom: 3px solid transparent;
+      color: rgba(255,255,255,0.58);
+      font-size: 14px;
+      font-weight: 500;
+      font-family: inherit;
+      padding: 13px 16px 11px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: color var(--transition), border-color var(--transition);
+      position: relative;
+      flex-shrink: 0;
+      letter-spacing: 0.01em;
+    }
+
+    .tab-btn:hover {
+      color: rgba(255,255,255,0.85);
+    }
+
+    .tab-btn.active {
+      color: var(--white);
+      border-bottom-color: var(--blue);
+      font-weight: 600;
+    }
+
+    /* ==============================
+       MAIN CONTENT AREA
+    ============================== */
+    #tab-content {
+      flex: 1;
+      padding: 28px 24px;
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .tab-panel {
+      display: none;
+    }
+    .tab-panel.active {
+      display: block;
+    }
+
+    /* ==============================
+       RESPONSIVE
+    ============================== */
+    @media (max-width: 600px) {
+      #app-header {
+        padding: 0 16px;
+        height: 52px;
+      }
+      #app-header .header-title {
+        font-size: 15px;
+      }
+      #tab-nav {
+        padding: 0 12px;
+        gap: 0;
+      }
+      .tab-btn {
+        font-size: 13px;
+        padding: 12px 12px 10px;
+      }
+      #tab-content {
+        padding: 20px 14px;
+      }
+      .pass-card {
+        padding: 32px 24px 28px;
+      }
+    }
+
+    @media (max-width: 380px) {
+      .tab-btn {
+        font-size: 12px;
+        padding: 11px 10px 9px;
+      }
+      .pass-card h1 {
+        font-size: 19px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ========================
+       PASSWORD OVERLAY
+  ========================= -->
+  <div id="password-overlay">
+    <div class="pass-card">
+      <div class="pass-icon">
+        <svg viewBox="0 0 24 24">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+        </svg>
+      </div>
+      <h1>Job Application Tracker</h1>
+      <p class="pass-subtitle">Enter password to continue</p>
+      <div class="pass-input-wrap">
+        <input
+          type="password"
+          id="pass-input"
+          placeholder="Password"
+          autocomplete="current-password"
+          spellcheck="false"
+        >
+        <button class="pass-toggle" id="pass-toggle" type="button" aria-label="Toggle password visibility">
+          <svg id="eye-icon" viewBox="0 0 24 24">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+        </button>
+      </div>
+      <button class="btn btn-primary btn-submit" id="pass-submit" type="button">Unlock</button>
+      <div id="pass-error">Incorrect password. Please try again.</div>
+    </div>
+  </div>
+
+  <!-- ========================
+       MAIN APP
+  ========================= -->
+  <div id="app-wrapper">
+
+    <!-- HEADER -->
+    <header id="app-header">
+      <span class="header-title">Job Application Tracker</span>
+      <div class="header-right">
+        <button class="header-logout" id="logout-btn" type="button">Lock</button>
+      </div>
+    </header>
+
+    <!-- TAB NAV -->
+    <nav id="tab-nav">
+      <button class="tab-btn active" data-tab="dashboard" type="button">Dashboard</button>
+      <button class="tab-btn" data-tab="resume" type="button">Resume Tool</button>
+      <button class="tab-btn" data-tab="coverletter" type="button">Cover Letter</button>
+      <button class="tab-btn" data-tab="followup" type="button">Follow-Up</button>
+      <button class="tab-btn" data-tab="interview" type="button">Interview Prep</button>
+    </nav>
+
+    <main>
+      <div class="tab-panel active" id="panel-dashboard">
+<style>
+#panel-dashboard {
+  font-family: Arial, sans-serif;
+  padding: 20px;
+  background: #f5f7fa;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+#panel-dashboard .dash-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+#panel-dashboard .dash-header h2 {
+  margin: 0;
+  font-size: 1.4rem;
+  color: #1a1a2e;
+}
+#panel-dashboard .btn-add {
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  padding: 8px 18px;
+  border-radius: 5px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+#panel-dashboard .btn-add:hover {
+  background: #1d4ed8;
+}
+#panel-dashboard .metrics-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+#panel-dashboard .metric-card {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  padding: 14px 22px;
+  min-width: 90px;
+  flex: 1 1 90px;
+  text-align: center;
+}
+#panel-dashboard .metric-card .metric-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+  color: #555;
+}
+#panel-dashboard .metric-card .metric-count {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+}
+#panel-dashboard .metric-total .metric-count { color: #1a1a2e; }
+#panel-dashboard .metric-applied .metric-count { color: #2563eb; }
+#panel-dashboard .metric-interview .metric-count { color: #d97706; }
+#panel-dashboard .metric-offer .metric-count { color: #16a34a; }
+#panel-dashboard .metric-rejected .metric-count { color: #dc2626; }
+#panel-dashboard .metric-withdrawn .metric-count { color: #6b7280; }
+#panel-dashboard .table-wrap {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+#panel-dashboard table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 900px;
+  font-size: 0.875rem;
+}
+#panel-dashboard thead tr {
+  background: #f1f5f9;
+  border-bottom: 2px solid #e2e8f0;
+}
+#panel-dashboard thead th {
+  padding: 11px 13px;
+  text-align: left;
+  font-weight: 700;
+  color: #374151;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+#panel-dashboard tbody tr {
+  border-bottom: 1px solid #e9edf2;
+  transition: background 0.12s;
+}
+#panel-dashboard tbody tr:hover {
+  background: #f8fafc;
+}
+#panel-dashboard tbody td {
+  padding: 10px 13px;
+  color: #1f2937;
+  vertical-align: middle;
+}
+#panel-dashboard .badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+#panel-dashboard .badge-applied { background: #dbeafe; color: #1e40af; }
+#panel-dashboard .badge-interview { background: #fef3c7; color: #92400e; }
+#panel-dashboard .badge-offer { background: #dcfce7; color: #14532d; }
+#panel-dashboard .badge-rejected { background: #fee2e2; color: #991b1b; }
+#panel-dashboard .badge-withdrawn { background: #f3f4f6; color: #374151; }
+#panel-dashboard .overdue-tag {
+  color: #dc2626;
+  font-weight: 700;
+  font-size: 0.72rem;
+  margin-left: 5px;
+}
+#panel-dashboard .action-link {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 3px 6px;
+  border-radius: 4px;
+  text-decoration: underline;
+}
+#panel-dashboard .action-edit { color: #2563eb; }
+#panel-dashboard .action-edit:hover { color: #1d4ed8; }
+#panel-dashboard .action-delete { color: #dc2626; margin-left: 6px; }
+#panel-dashboard .action-delete:hover { color: #991b1b; }
+#panel-dashboard .notes-cell {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #6b7280;
+  font-size: 0.82rem;
+}
+#panel-dashboard .modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+#panel-dashboard .modal-overlay.open {
+  display: flex;
+}
+#panel-dashboard .modal-box {
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  padding: 28px 28px 22px 28px;
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  box-sizing: border-box;
+}
+#panel-dashboard .modal-box h3 {
+  margin: 0 0 20px 0;
+  font-size: 1.15rem;
+  color: #1a1a2e;
+}
+#panel-dashboard .form-row {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+#panel-dashboard .form-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+#panel-dashboard .form-group label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #374151;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+#panel-dashboard .form-group input,
+#panel-dashboard .form-group select,
+#panel-dashboard .form-group textarea {
+  padding: 7px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 5px;
+  font-size: 0.9rem;
+  color: #1f2937;
+  background: #fafafa;
+  outline: none;
+  font-family: Arial, sans-serif;
+  width: 100%;
+  box-sizing: border-box;
+}
+#panel-dashboard .form-group input:focus,
+#panel-dashboard .form-group select:focus,
+#panel-dashboard .form-group textarea:focus {
+  border-color: #2563eb;
+  background: #fff;
+}
+#panel-dashboard .form-group textarea {
+  resize: vertical;
+  min-height: 64px;
+}
+#panel-dashboard .modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+#panel-dashboard .btn-save {
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  padding: 8px 20px;
+  border-radius: 5px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+#panel-dashboard .btn-save:hover { background: #1d4ed8; }
+#panel-dashboard .btn-cancel {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  padding: 8px 18px;
+  border-radius: 5px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+#panel-dashboard .btn-cancel:hover { background: #e5e7eb; }
+#panel-dashboard .empty-msg {
+  text-align: center;
+  color: #9ca3af;
+  padding: 30px 0;
+  font-size: 0.95rem;
+}
+@media (max-width: 600px) {
+  #panel-dashboard { padding: 10px; }
+  #panel-dashboard .form-row { flex-direction: column; gap: 0; }
+  #panel-dashboard .modal-box { padding: 16px 10px 14px 10px; }
+}
+</style>
+
+<div class="dash-header">
+  <h2>Job Application Tracker</h2>
+  <button class="btn-add" id="dash-btn-add">+ Add Application</button>
+</div>
+
+<div class="metrics-row" id="dash-metrics"></div>
+
+<div class="table-wrap">
+  <table id="dash-table">
+    <thead>
+      <tr>
+        <th>Company</th>
+        <th>Role</th>
+        <th>Date Applied</th>
+        <th>Posted Salary</th>
+        <th>Requested</th>
+        <th>Status</th>
+        <th>Follow-Up Date</th>
+        <th>Follow-Up Sent</th>
+        <th>Notes</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="dash-tbody"></tbody>
+  </table>
+</div>
+
+<div class="modal-overlay" id="dash-modal-overlay">
+  <div class="modal-box">
+    <h3 id="dash-modal-title">Add Application</h3>
+    <form id="dash-form" autocomplete="off">
+      <input type="hidden" id="f-id">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="f-company">Company</label>
+          <input type="text" id="f-company" placeholder="Company name" required>
+        </div>
+        <div class="form-group">
+          <label for="f-role">Role</label>
+          <input type="text" id="f-role" placeholder="Job title" required>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="f-date">Date Applied</label>
+          <input type="date" id="f-date" required>
+        </div>
+        <div class="form-group">
+          <label for="f-status">Status</label>
+          <select id="f-status">
+            <option value="Applied">Applied</option>
+            <option value="Interview">Interview</option>
+            <option value="Offer">Offer</option>
+            <option value="Rejected">Rejected</option>
+            <option value="Withdrawn">Withdrawn</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="f-posted">Posted Salary</label>
+          <input type="text" id="f-posted" placeholder="e.g. $50,000/yr or Unknown">
+        </div>
+        <div class="form-group">
+          <label for="f-requested">Requested Salary</label>
+          <input type="text" id="f-requested" placeholder="e.g. $95,000/yr">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="f-followdate">Follow-Up Date</label>
+          <input type="date" id="f-followdate">
+        </div>
+        <div class="form-group">
+          <label for="f-followsent">Follow-Up Sent</label>
+          <select id="f-followsent">
+            <option value="No">No</option>
+            <option value="Yes">Yes</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="f-jobposting" style="display:flex;justify-content:space-between;align-items:center;">Save Job Posting (Recommended) <span style="font-size:11px;font-weight:400;color:#94a3b8;">Companies often remove postings before interviews</span></label>
+          <textarea id="f-jobposting" placeholder="Paste the full job posting text here... This will be available for Resume Tool, Cover Letter, and Interview Prep." style="min-height:120px;font-size:0.82rem;"></textarea>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
           <label for="f-notes">Notes</label>
           <textarea id="f-notes" placeholder="Optional notes..."></textarea>
         </div>
@@ -837,9 +2545,9 @@
 (function() {
   var STORAGE_KEY = 'jobApps';
   var SEED = [
-    {id:1, company:'Personify Health', role:'Remote RN Case Management', date:'2026-03-14', postedSalary:'Unknown', requestedSalary:'$95,000/yr', status:'Applied', followUpDate:'2026-03-21', followUpSent:'No', notes:''},
-    {id:2, company:'Centene', role:'Concurrent Review RN', date:'2026-03-15', postedSalary:'$26.50-$48.55/hr', requestedSalary:'$95,000/yr', status:'Applied', followUpDate:'2026-03-22', followUpSent:'No', notes:''},
-    {id:3, company:'Vivo HealthStaff', role:'Remote Case Management RN', date:'2026-03-15', postedSalary:'$43-$48/hr', requestedSalary:'$95,000/yr', status:'Applied', followUpDate:'2026-03-22', followUpSent:'No', notes:''}
+    {id:1, company:'Personify Health', role:'Remote RN Case Management', date:'2026-03-14', postedSalary:'Unknown', requestedSalary:'$95,000/yr', status:'Applied', followUpDate:'2026-03-21', followUpSent:'No', notes:'', jobPosting:''},
+    {id:2, company:'Centene', role:'Concurrent Review RN', date:'2026-03-15', postedSalary:'$26.50-$48.55/hr', requestedSalary:'$95,000/yr', status:'Applied', followUpDate:'2026-03-22', followUpSent:'No', notes:'', jobPosting:''},
+    {id:3, company:'Vivo HealthStaff', role:'Remote Case Management RN', date:'2026-03-15', postedSalary:'$43-$48/hr', requestedSalary:'$95,000/yr', status:'Applied', followUpDate:'2026-03-22', followUpSent:'No', notes:'', jobPosting:''}
   ];
 
   function loadApps() {
@@ -867,6 +2575,19 @@
   }
 
   var apps = initApps();
+
+  // Migrate existing data: normalize followUpSent to 'Yes'/'No' strings, add jobPosting field
+  (function(){
+    var needsSave = false;
+    apps.forEach(function(a){
+      // Normalize followUpSent: true -> 'Yes', false/undefined/null -> 'No', keep 'Yes'/'No' as-is
+      if(a.followUpSent === true){ a.followUpSent = 'Yes'; needsSave = true; }
+      else if(a.followUpSent !== 'Yes'){ a.followUpSent = 'No'; needsSave = true; }
+      // Add jobPosting field if missing
+      if(typeof a.jobPosting === 'undefined'){ a.jobPosting = ''; needsSave = true; }
+    });
+    if(needsSave) saveApps(apps);
+  })();
 
   window.getAppsData = function() {
     return apps.map(function(x){return Object.assign({},x);});
@@ -945,6 +2666,9 @@
     tbody.innerHTML = apps.map(function(a){
       var overdue = isOverdue(a.followUpDate, a.followUpSent);
       var followCell = escHtml(formatDate(a.followUpDate)) + (overdue ? '<span class="overdue-tag">OVERDUE</span>' : '');
+      var hasPosting = a.jobPosting && a.jobPosting.trim().length > 0;
+      var postingLabel = hasPosting ? 'Saved' : 'None';
+      var postingStyle = hasPosting ? 'color:#166534;font-weight:600;' : 'color:#94a3b8;';
       return '<tr>' +
         '<td>' + escHtml(a.company) + '</td>' +
         '<td>' + escHtml(a.role) + '</td>' +
@@ -992,7 +2716,8 @@
       status: document.getElementById('f-status').value,
       followUpDate: document.getElementById('f-followdate').value,
       followUpSent: document.getElementById('f-followsent').value,
-      notes: document.getElementById('f-notes').value.trim()
+      notes: document.getElementById('f-notes').value.trim(),
+      jobPosting: document.getElementById('f-jobposting').value.trim()
     };
   }
 
@@ -1007,6 +2732,7 @@
     document.getElementById('f-followdate').value = a.followUpDate || '';
     document.getElementById('f-followsent').value = a.followUpSent || 'No';
     document.getElementById('f-notes').value = a.notes || '';
+    document.getElementById('f-jobposting').value = a.jobPosting || '';
   }
 
   var addBtn = document.getElementById('dash-btn-add');
@@ -1091,6 +2817,7 @@
 
   render();
 })();
+
 </script>
 </div>
 
@@ -1158,266 +2885,386 @@
 
 <script>
 (function() {
-  var STOPWORDS = new Set([
-    'the','a','an','and','or','but','in','on','at','to','for','of','with','by','from',
-    'is','are','was','were','be','been','being','have','has','had','do','does','did',
-    'will','would','could','should','may','might','shall','can','need','must','not',
-    'this','that','these','those','it','its','we','our','you','your','they','their',
-    'i','me','my','as','so','if','up','no','all','out','any','also','just','than',
-    'per','via','etc','such','well','very','each','both','what','when','where','how',
-    'ability','able','experience','work','working','including','include','includes',
-    'required','preferred','qualifications','requirements','responsibilities','position',
-    'job','role','company','team','new','high','within','across','ensure','provide',
-    'strong','excellent','good','based','related','other','minimum','plus','years'
-  ]);
-
-  function normalize(text) {
-    return text.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
-  }
-
-  function extractKeywords(text) {
-    var norm = normalize(text);
-    var words = norm.split(' ').filter(function(w){ return w.length > 2 && !STOPWORDS.has(w); });
-    var seen = {};
-    return words.filter(function(w){ if(seen[w]) return false; seen[w]=true; return true; });
-  }
-
-  function extractPhrases(text) {
-    var phrases = [];
-    var patterns = [
-      /case management/gi, /utilization review/gi, /prior authorization/gi,
-      /care coordination/gi, /discharge planning/gi, /patient assessment/gi,
-      /clinical documentation/gi, /evidence[- ]based/gi, /quality improvement/gi,
-      /patient education/gi, /interdisciplinary team/gi, /care plan/gi,
-      /remote nursing/gi, /telehealth/gi, /managed care/gi, /health insurance/gi,
-      /medical necessity/gi, /concurrent review/gi, /retrospective review/gi,
-      /appeals? process/gi, /denial management/gi, /clinical review/gi,
-      /hipaa/gi, /compliance/gi, /regulatory/gi, /licensure/gi,
-      /critical thinking/gi, /time management/gi, /electronic health record/gi,
-      /epic/gi, /cerner/gi, /meditech/gi, /interqual/gi, /milliman/gi
-    ];
-    patterns.forEach(function(p){
-      var m = text.match(p);
-      if(m) m.forEach(function(v){ phrases.push(v.toLowerCase()); });
-    });
-    var seen = {};
-    return phrases.filter(function(p){ if(seen[p]) return false; seen[p]=true; return true; });
-  }
-
-  function analyzeKeywords(resumeText, jobText) {
-    var jobKw = extractKeywords(jobText);
-    var jobPhrases = extractPhrases(jobText);
-    var resumeNorm = normalize(resumeText);
-    var resumeLower = resumeText.toLowerCase();
-    var matched = [];
-    var missing = [];
-    jobPhrases.forEach(function(p){
-      if(resumeLower.indexOf(p) > -1) matched.push(p);
-      else missing.push(p);
-    });
-    jobKw.forEach(function(k){
-      if(matched.indexOf(k)===-1 && missing.indexOf(k)===-1){
-        if(resumeNorm.indexOf(k) > -1) matched.push(k);
-        else missing.push(k);
-      }
-    });
-    return { matched: matched.slice(0,20), missing: missing.slice(0,15) };
-  }
+  // --- EXTRACTION HELPERS ---
 
   function extractName(text) {
     var lines = text.trim().split('\n');
-    for(var i=0; i<Math.min(5,lines.length); i++){
+    for(var i=0; i<Math.min(5, lines.length); i++){
       var line = lines[i].trim();
-      if(!line) continue;
-      if(/^[A-Z][a-z]+(\s+[A-Z][a-z]+){1,3}$/.test(line)) return line;
-      if(/^[A-Z]{2,}(\s+[A-Z]{2,})+$/.test(line)){
-        return line.split(' ').map(function(w){ return w.charAt(0)+w.slice(1).toLowerCase(); }).join(' ');
-      }
+      if(!line || line.length < 3) continue;
+      if(/^[A-Z][a-z]+\s+[A-Z][a-z]/.test(line) && line.length < 60 && !/\d{3}/.test(line) && !/@/.test(line))
+        return line.split(/\s*[,|]\s*/)[0].trim();
     }
-    return 'Candidate Name';
+    return 'Your Name';
   }
 
-  function extractCreds(text) {
+  function extractCredentials(text) {
     var creds = [];
-    var pats = [/\b(RN|LPN|LVN|NP|CRNA|CNM|CNS|CNA|PA-C|BSN|MSN|ADN|DNP|PhD)\b/g,
-      /\b(ACLS|BLS|PALS|NRP|TNCC|CCRN|CEN|CNOR|CMSRN|ONC|CWCN|CCM|ACM)\b/g];
-    pats.forEach(function(p){ var m; while((m=p.exec(text))!==null){ if(creds.indexOf(m[1])===-1) creds.push(m[1]); }});
+    var patterns = [
+      /\bRN\b/, /\bBSN\b/, /\bMSN\b/, /\bDNP\b/, /\bADN\b/, /\bLPN\b/, /\bLVN\b/,
+      /\bCCM\b/, /\bACM\b/, /\bCPHQ\b/, /\bCEN\b/, /\bCCRN\b/, /\bOCN\b/,
+      /\bNP\b/, /\bFNP\b/, /\bANP\b/, /\bAPRN\b/, /\bCNS\b/
+    ];
+    patterns.forEach(function(p){
+      if(p.test(text)){
+        var m = text.match(p);
+        if(m && creds.indexOf(m[0]) === -1) creds.push(m[0]);
+      }
+    });
     return creds;
   }
 
   function extractContact(text) {
-    var email = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-z]{2,}/);
-    var phone = text.match(/(\(\d{3}\)\s*\d{3}[-.]\d{4}|\d{3}[-.]\d{3}[-.]\d{4})/);
+    var lines = text.trim().split('\n').slice(0, 8);
     var parts = [];
-    if(email) parts.push(email[0]);
-    if(phone) parts.push(phone[0]);
+    for(var i=0; i<lines.length; i++){
+      var line = lines[i].trim();
+      var emailMatch = line.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-z]{2,}/);
+      if(emailMatch && parts.indexOf(emailMatch[0]) === -1) parts.push(emailMatch[0]);
+      var phoneMatch = line.match(/\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/);
+      if(phoneMatch && parts.indexOf(phoneMatch[0]) === -1) parts.push(phoneMatch[0]);
+      if(/\b[A-Z][a-z]+,?\s+[A-Z]{2}\b/.test(line)){
+        var locMatch = line.match(/([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?,?\s+[A-Z]{2}(?:\s+\d{5})?)/);
+        if(locMatch && parts.indexOf(locMatch[0]) === -1) parts.push(locMatch[0]);
+      }
+    }
     return parts.join(' | ');
   }
 
   function extractYears(text) {
-    var m = text.match(/(\d+)\+?\s*years?\s*(?:of\s*)?(?:experience|exp|nursing)/i);
+    var m = text.match(/(\d{1,2})\+?\s*(?:years?|yrs?)\s*(?:of\s+)?(?:experience|exp|clinical|nursing)/i);
     if(m) return parseInt(m[1]);
-    var years = text.match(/\b(19|20)(\d{2})\b/g);
-    if(years && years.length >= 2){
-      var nums = years.map(function(y){ return parseInt(y); });
-      var span = new Date().getFullYear() - Math.min.apply(null, nums);
-      if(span >= 1 && span <= 45) return span;
+    var yearMatches = text.match(/\b(19|20)\d{2}\b/g);
+    if(yearMatches && yearMatches.length >= 2){
+      var years = yearMatches.map(Number).sort();
+      var span = years[years.length-1] - years[0];
+      if(span > 0 && span < 40) return span;
     }
     return 5;
   }
 
-  function extractJobTitle(text) {
-    var patterns = [
-      /(?:position|title|role)[:\s]+([^\n]+)/i,
-      /^([A-Z][^\n]{5,60})$/m
-    ];
-    for(var i=0; i<patterns.length; i++){
-      var m = text.match(patterns[i]);
-      if(m) return m[1].trim().replace(/[\-|]+$/, '').trim();
-    }
-    return 'Healthcare Professional';
-  }
-
-  function extractCompany(text) {
-    var patterns = [
-      /(?:company|organization|employer|at)[:\s]+([^\n]+)/i,
-      /(?:about|join)\s+([A-Z][A-Za-z\s&]+?)(?:\.|,|\n)/
-    ];
-    for(var i=0; i<patterns.length; i++){
-      var m = text.match(patterns[i]);
-      if(m) return m[1].trim();
-    }
-    return 'the organization';
-  }
-
-  function extractExperience(text) {
+  function extractExperienceBlocks(resumeText) {
     var blocks = [];
-    var lines = text.split('\n');
+    var lines = resumeText.split('\n');
     var current = null;
+    var inExpSection = false;
+
     for(var i=0; i<lines.length; i++){
       var line = lines[i].trim();
       if(!line) continue;
-      if(/^[\-\*\u2022]\s/.test(line)){
-        if(current) current.bullets.push(line.replace(/^[\-\*\u2022]\s*/, ''));
-      } else if(/\d{4}/.test(line) && /\b(RN|nurse|manager|coordinator|specialist|director|supervisor|staff)/i.test(line)){
-        if(current) blocks.push(current);
-        current = { title: line, bullets: [] };
+
+      // Detect experience section headers
+      if(/^(?:professional\s+)?experience|work\s+history|employment/i.test(line)){
+        inExpSection = true;
+        continue;
+      }
+      // Detect end of experience section
+      if(inExpSection && /^(?:education|certif|licens|skills|additional|references|training|volunteer)/i.test(line)){
+        if(current){ blocks.push(current); current = null; }
+        inExpSection = false;
+        continue;
+      }
+
+      if(inExpSection || /\d{4}/.test(line)){
+        // Bullet point
+        if(/^[\-*]\s/.test(line) || /^\d+\.\s/.test(line)){
+          if(current) current.bullets.push(line.replace(/^[\-*\d.]+\s*/, ''));
+        }
+        // Job title line (has year + role keywords)
+        else if(/\d{4}/.test(line) && line.length > 10 && line.length < 200){
+          if(current && (current.bullets.length > 0 || current.title)) blocks.push(current);
+          current = { title: line, bullets: [] };
+        }
+        // Continuation of title or standalone line
+        else if(current && current.bullets.length === 0 && !current.company && /[A-Z]/.test(line)){
+          current.company = line;
+        }
       }
     }
     if(current) blocks.push(current);
     return blocks;
   }
 
-  function buildResume(resumeText, jobText, analysis) {
+  function extractEducation(text) {
+    var eduLines = [];
+    var lines = text.split('\n');
+    var inEdu = false;
+    for(var i=0; i<lines.length; i++){
+      var line = lines[i].trim();
+      if(!line) continue;
+      if(/^(?:education|academic|degree)/i.test(line)){ inEdu = true; continue; }
+      if(inEdu && /^(?:experience|skills|certif|additional|references)/i.test(line)) break;
+      if(inEdu && line.length > 5) eduLines.push(line);
+      // Also capture degree mentions outside edu section
+      if(!inEdu && /\b(?:Bachelor|Master|Doctor|Associate|BSN|MSN|DNP|ADN)\b/i.test(line) && /\b(?:Nursing|Science|University|College)\b/i.test(line)){
+        eduLines.push(line);
+      }
+    }
+    return eduLines;
+  }
+
+  function extractSkillsFromResume(text) {
+    var skills = [];
+    var lines = text.split('\n');
+    var inSkills = false;
+    for(var i=0; i<lines.length; i++){
+      var line = lines[i].trim();
+      if(!line) continue;
+      if(/^(?:skills|competencies|expertise|technical)/i.test(line)){ inSkills = true; continue; }
+      if(inSkills && /^(?:experience|education|certif|additional|references)/i.test(line)) break;
+      if(inSkills && line.length > 3){
+        // Split by commas, pipes, semicolons, or bullet chars
+        var items = line.split(/[,;|]/).map(function(s){ return s.replace(/^[\-*]+\s*/, '').trim(); }).filter(function(s){ return s.length > 2; });
+        skills = skills.concat(items);
+      }
+    }
+    // Also extract from bullet points throughout
+    var bulletSkills = text.match(/(?:proficient|experienced|skilled|expertise)\s+(?:in|with)\s+([^.\n]+)/gi);
+    if(bulletSkills){
+      bulletSkills.forEach(function(m){
+        var skill = m.replace(/^(?:proficient|experienced|skilled|expertise)\s+(?:in|with)\s+/i, '').trim();
+        if(skill.length > 3 && skill.length < 60) skills.push(skill);
+      });
+    }
+    return skills;
+  }
+
+  // --- JOB POSTING EXTRACTION ---
+
+  function extractJobTitle(text) {
+    var m = text.match(/(?:title|position|role)[:\s]+([^\n]+)/i);
+    if(m) return m[1].trim().replace(/[-|,].+$/, '').trim();
+    var lines = text.trim().split('\n');
+    for(var i=0; i<Math.min(5, lines.length); i++){
+      var line = lines[i].trim();
+      if(line.length > 5 && line.length < 80 && /(?:nurse|rn|case|review|clinical|health|care|manager|coordinator|specialist)/i.test(line)){
+        return line.replace(/[-|,].+$/, '').trim();
+      }
+    }
+    return 'the position';
+  }
+
+  function extractCompany(text) {
+    var m = text.match(/(?:company|organization|employer)[:\s]+([A-Z][A-Za-z0-9\s&'.,-]+?)(?:\.|,|\n)/i);
+    if(m) return m[1].trim();
+    var patterns = [
+      /(?:at|with|for|join)\s+([A-Z][A-Za-z0-9&'.,\s-]{2,50}?)(?:\s*[-|,]|\s+is\s|\s+are\s|\s*\n)/,
+      /^([A-Z][A-Za-z0-9&'.,\s-]{2,60})\s*(?:is\s+(?:seeking|looking|hiring))/m
+    ];
+    for(var i=0; i<patterns.length; i++){
+      var pm = text.match(patterns[i]);
+      if(pm) return pm[1].trim();
+    }
+    return 'the organization';
+  }
+
+  function extractJobKeywords(jobText) {
+    var lower = jobText.toLowerCase();
+    var found = [];
+    var checks = [
+      {key:'case management', kw:'Case Management'},
+      {key:'utilization review', kw:'Utilization Review'},
+      {key:'prior auth', kw:'Prior Authorization'},
+      {key:'care coordination', kw:'Care Coordination'},
+      {key:'discharge planning', kw:'Discharge Planning'},
+      {key:'concurrent review', kw:'Concurrent Review'},
+      {key:'interqual', kw:'InterQual Criteria'},
+      {key:'milliman', kw:'Milliman Criteria'},
+      {key:'appeal', kw:'Appeals and Denials Management'},
+      {key:'remote', kw:'Remote Clinical Operations'},
+      {key:'telehealth', kw:'Telehealth'},
+      {key:'managed care', kw:'Managed Care'},
+      {key:'insurance', kw:'Health Insurance Operations'},
+      {key:'ehr', kw:'Electronic Health Records'},
+      {key:'electronic health', kw:'Electronic Health Records'},
+      {key:'epic', kw:'Epic Systems'},
+      {key:'cerner', kw:'Cerner'},
+      {key:'hipaa', kw:'HIPAA Compliance'},
+      {key:'quality', kw:'Quality Improvement'},
+      {key:'patient education', kw:'Patient Education'},
+      {key:'assessment', kw:'Clinical Assessment'},
+      {key:'documentation', kw:'Clinical Documentation'},
+      {key:'evidence', kw:'Evidence-Based Practice'},
+      {key:'interdisciplin', kw:'Interdisciplinary Collaboration'},
+      {key:'critical think', kw:'Critical Thinking'},
+      {key:'communication', kw:'Communication'},
+      {key:'time management', kw:'Time Management'},
+      {key:'licensure', kw:'Multi-State Licensure'},
+      {key:'compact', kw:'Compact Nursing License'},
+      {key:'medicaid', kw:'Medicaid'},
+      {key:'medicare', kw:'Medicare'},
+      {key:'clinical review', kw:'Clinical Review'},
+      {key:'benefit', kw:'Benefits Determination'},
+      {key:'precert', kw:'Precertification'},
+      {key:'peer review', kw:'Peer Review'},
+      {key:'triage', kw:'Clinical Triage'},
+      {key:'chronic', kw:'Chronic Disease Management'},
+      {key:'population health', kw:'Population Health'},
+      {key:'motivational interview', kw:'Motivational Interviewing'}
+    ];
+    var seen = {};
+    checks.forEach(function(c){
+      if(lower.indexOf(c.key) > -1 && !seen[c.kw]){
+        found.push(c.kw);
+        seen[c.kw] = true;
+      }
+    });
+    return found;
+  }
+
+  function findResumeMatches(resumeText, jobKeywords) {
+    var lower = resumeText.toLowerCase();
+    var matched = [];
+    var missing = [];
+    jobKeywords.forEach(function(kw){
+      // Check if the core concept exists in the resume
+      var core = kw.toLowerCase().split(' ').slice(0, 2).join(' ');
+      if(lower.indexOf(core) > -1){
+        matched.push(kw);
+      } else {
+        missing.push(kw);
+      }
+    });
+    return { matched: matched, missing: missing };
+  }
+
+  // --- RESUME BUILDER ---
+
+  function buildProfessionalResume(resumeText, jobText) {
     var name = extractName(resumeText);
-    var creds = extractCreds(resumeText);
+    var creds = extractCredentials(resumeText);
     var contact = extractContact(resumeText);
-    var yrs = extractYears(resumeText);
+    var years = extractYears(resumeText);
+    var expBlocks = extractExperienceBlocks(resumeText);
+    var eduLines = extractEducation(resumeText);
+    var resumeSkills = extractSkillsFromResume(resumeText);
+
     var jobTitle = extractJobTitle(jobText);
     var company = extractCompany(jobText);
-    var missing = analysis.missing;
-    var matched = analysis.matched;
-    var allKey = matched.concat(missing);
+    var jobKeywords = extractJobKeywords(jobText);
+    var analysis = findResumeMatches(resumeText, jobKeywords);
 
-    var credStr = creds.length > 0 ? ', ' + creds.join(', ') : '';
-    var header = name + credStr;
+    // Build header
+    var header = name;
+    if(creds.length > 0) header += ', ' + creds.join(', ');
     if(contact) header += '\n' + contact;
 
+    // Build professional summary using ONLY resume info, flavored with job keywords
+    var topSkills = analysis.matched.slice(0, 3);
+    if(topSkills.length < 3){
+      var extras = ['patient care', 'clinical assessment', 'care coordination'];
+      extras.forEach(function(e){ if(topSkills.length < 3) topSkills.push(e); });
+    }
     var summary = 'PROFESSIONAL SUMMARY\n' +
-      'Dedicated and results-driven healthcare professional with ' + yrs + '+ years of clinical and ' +
-      'administrative nursing experience. Proven expertise in ' +
-      (allKey.slice(0,3).join(', ') || 'patient care, clinical assessment, and care coordination') +
-      '. Seeking to leverage comprehensive background in ' +
-      (allKey.slice(3,5).join(' and ') || 'healthcare delivery and quality improvement') +
-      ' as a ' + jobTitle + ' with ' + company +
-      '. Known for exceptional clinical judgment, strong communication skills, and commitment to ' +
-      'evidence-based practice and positive patient outcomes.';
+      'Dedicated and results-driven registered nurse with ' + years + '+ years of clinical experience ' +
+      'specializing in ' + topSkills[0].toLowerCase() + ' and ' + topSkills[1].toLowerCase() + '. ' +
+      'Proven ability to manage complex patient populations, optimize clinical outcomes, and collaborate ' +
+      'effectively with interdisciplinary teams. Seeking to contribute expertise in ' +
+      topSkills[2].toLowerCase() + ' as a ' + jobTitle + ' with ' + company + '. ' +
+      'Known for strong clinical judgment, detailed documentation, and commitment to evidence-based practice.';
+
+    // Build core competencies from resume skills + matched job keywords
+    var compList = [];
+    analysis.matched.forEach(function(m){ if(compList.length < 12) compList.push(m); });
+    resumeSkills.forEach(function(s){
+      if(compList.length < 12){
+        var clean = s.trim();
+        if(clean.length > 3 && clean.length < 40){
+          var dup = compList.some(function(c){ return c.toLowerCase() === clean.toLowerCase(); });
+          if(!dup) compList.push(clean);
+        }
+      }
+    });
+    // Pad with defaults if needed
+    var defaults = ['Patient Assessment','Care Planning','Clinical Documentation','Quality Improvement','Patient Education','Interdisciplinary Collaboration'];
+    defaults.forEach(function(d){ if(compList.length < 9){ var dup = compList.some(function(c){return c.toLowerCase()===d.toLowerCase();}); if(!dup) compList.push(d); }});
 
     var competencies = 'CORE COMPETENCIES';
-    var compList = allKey.slice(0, 12);
-    if(compList.length < 6){
-      var defaults = ['Patient Assessment','Care Planning','Clinical Documentation','Quality Improvement','Patient Education','Interdisciplinary Collaboration'];
-      defaults.forEach(function(d){ if(compList.length < 12 && compList.indexOf(d.toLowerCase())===-1) compList.push(d); });
-    }
     var compRows = [];
     for(var i=0; i<compList.length; i+=3){
       var row = compList.slice(i, i+3).map(function(c){
-        return c.split(' ').map(function(w){ return w.charAt(0).toUpperCase()+w.slice(1); }).join(' ');
+        return c.charAt(0).toUpperCase() + c.slice(1);
       });
       compRows.push(row.join('  |  '));
     }
     competencies += '\n' + compRows.join('\n');
 
-    var expBlocks = extractExperience(resumeText);
+    // Build experience section - use ONLY resume experience blocks
     var experience = 'PROFESSIONAL EXPERIENCE';
     if(expBlocks.length > 0){
       expBlocks.forEach(function(block){
         experience += '\n\n' + block.title;
-        block.bullets.forEach(function(b){
-          experience += '\n- ' + b;
-        });
-        if(missing.length > 0 && block.bullets.length > 0){
-          var addSkill = missing.shift();
-          if(addSkill){
-            experience += '\n- Demonstrated proficiency in ' +
-              addSkill.split(' ').map(function(w){ return w.charAt(0).toUpperCase()+w.slice(1); }).join(' ') +
-              ' through daily clinical practice and process improvement initiatives';
-          }
+        if(block.company) experience += '\n' + block.company;
+        if(block.bullets.length > 0){
+          block.bullets.forEach(function(b){
+            experience += '\n- ' + b;
+          });
         }
       });
     } else {
-      experience += '\n\nHealthcare Professional\n' +
-        '- Provided comprehensive patient care across diverse clinical settings\n' +
-        '- Managed complex patient caseloads with attention to quality outcomes\n' +
-        '- Collaborated with interdisciplinary teams to develop and implement care plans\n' +
-        '- Maintained accurate clinical documentation in compliance with regulatory standards';
-      if(missing.length > 0){
-        missing.slice(0,3).forEach(function(s){
-          experience += '\n- Applied ' + s + ' principles to optimize patient outcomes and operational efficiency';
-        });
+      // If no structured blocks found, extract meaningful lines from resume
+      var resumeLines = resumeText.split('\n');
+      var bulletLines = [];
+      resumeLines.forEach(function(line){
+        var trimmed = line.trim();
+        if(/^[\-*]\s/.test(trimmed) && trimmed.length > 15){
+          bulletLines.push(trimmed.replace(/^[\-*]\s*/, ''));
+        }
+      });
+      if(bulletLines.length > 0){
+        experience += '\n\nClinical Nursing Professional';
+        bulletLines.forEach(function(b){ experience += '\n- ' + b; });
+      } else {
+        experience += '\n\n(Experience details from your resume will appear here. For best results, format your resume with clear job titles, dates, and bullet-point accomplishments.)';
       }
     }
 
-    var education = 'EDUCATION & CERTIFICATIONS';
-    var eduLines = [];
-    if(creds.indexOf('DNP') > -1) eduLines.push('Doctor of Nursing Practice (DNP)');
-    else if(creds.indexOf('MSN') > -1) eduLines.push('Master of Science in Nursing (MSN)');
-    else if(creds.indexOf('BSN') > -1) eduLines.push('Bachelor of Science in Nursing (BSN)');
-    else if(creds.indexOf('ADN') > -1) eduLines.push('Associate Degree in Nursing (ADN)');
-    if(eduLines.length === 0) eduLines.push('Nursing Degree');
-    var certCreds = creds.filter(function(c){ return ['RN','LPN','NP','CRNA','CNM'].indexOf(c) === -1 &&
-      ['BSN','MSN','ADN','DNP','PhD'].indexOf(c) === -1; });
-    if(certCreds.length > 0) eduLines.push('Certifications: ' + certCreds.join(', '));
-    if(creds.indexOf('RN') > -1) eduLines.push('Registered Nurse (RN) - Active License');
-    education += '\n' + eduLines.join('\n');
-
-    var additional = 'ADDITIONAL SKILLS';
-    var addSkills = ['Proficient in electronic health record (EHR) systems',
-      'Strong verbal and written communication skills',
-      'HIPAA compliance and patient privacy standards',
-      'Remote work technology and virtual care platforms'];
-    missing.forEach(function(s){
-      addSkills.push(s.split(' ').map(function(w){ return w.charAt(0).toUpperCase()+w.slice(1); }).join(' '));
-    });
-    additional += '\n' + addSkills.slice(0,6).map(function(s){ return '- ' + s; }).join('\n');
-
-    return header + '\n\n' + summary + '\n\n' + competencies + '\n\n' + experience + '\n\n' + education + '\n\n' + additional;
-  }
-
-  function renderBadges(containerId, emptyId, keywords, color, bg) {
-    var container = document.getElementById(containerId);
-    var empty = document.getElementById(emptyId);
-    if(!container) return;
-    if(keywords.length === 0){
-      container.innerHTML = '';
-      if(empty) empty.style.display = 'block';
-      return;
+    // Build education section - use ONLY resume education
+    var education = 'EDUCATION AND CERTIFICATIONS';
+    if(eduLines.length > 0){
+      eduLines.forEach(function(line){ education += '\n' + line; });
+    } else {
+      // Infer from credentials
+      if(creds.indexOf('DNP') > -1) education += '\nDoctor of Nursing Practice (DNP)';
+      else if(creds.indexOf('MSN') > -1) education += '\nMaster of Science in Nursing (MSN)';
+      else if(creds.indexOf('BSN') > -1) education += '\nBachelor of Science in Nursing (BSN)';
+      else if(creds.indexOf('ADN') > -1) education += '\nAssociate Degree in Nursing (ADN)';
+      else education += '\nNursing Degree';
+      // List certifications
+      var certCreds = creds.filter(function(c){ return ['CCM','ACM','CPHQ','CEN','CCRN','OCN','FNP','ANP','APRN','CNS'].indexOf(c) > -1; });
+      if(certCreds.length > 0) education += '\nCertifications: ' + certCreds.join(', ');
     }
-    if(empty) empty.style.display = 'none';
-    container.innerHTML = keywords.map(function(k){
-      return '<span style="display:inline-block;margin:3px 4px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;color:'+color+';background:'+bg+';border:1px solid '+color+'22;">'+k+'</span>';
-    }).join('');
+    education += '\nActive Registered Nurse License';
+    if(creds.indexOf('RN') > -1) education += ' (RN)';
+
+    // Additional skills from resume
+    var additional = 'ADDITIONAL SKILLS';
+    var addSkills = [];
+    // Add missing keywords as areas of knowledge (honestly framed)
+    if(analysis.missing.length > 0){
+      additional += '\nFamiliar with: ' + analysis.missing.slice(0, 5).join(', ');
+    }
+    if(resumeSkills.length > 0){
+      var extra = resumeSkills.filter(function(s){
+        return !compList.some(function(c){ return c.toLowerCase() === s.toLowerCase(); }) && s.length > 3 && s.length < 50;
+      }).slice(0, 5);
+      if(extra.length > 0) additional += '\nTechnical Skills: ' + extra.join(', ');
+    }
+    additional += '\nProficient in electronic health records and clinical documentation systems';
+    additional += '\nStrong written and verbal communication skills';
+
+    var fullResume = header + '\n\n' + summary + '\n\n' + competencies + '\n\n' + experience + '\n\n' + education + '\n\n' + additional;
+
+    return {
+      resume: fullResume,
+      matched: analysis.matched,
+      missing: analysis.missing,
+      jobTitle: jobTitle,
+      company: company
+    };
   }
+
+  // --- UI WIRING ---
 
   function showError(msg) {
     var el = document.getElementById('resume-error');
@@ -1425,78 +3272,113 @@
   }
   function hideError() {
     var el = document.getElementById('resume-error');
-    if(el) el.style.display = 'none';
-  }
-  function setLoading(on) {
-    var btn = document.getElementById('resume-generate-btn');
-    var loading = document.getElementById('resume-loading');
-    if(on){
-      if(btn){ btn.disabled = true; btn.style.background = '#93c5fd'; btn.textContent = 'Generating...'; }
-      if(loading) loading.style.display = 'flex';
-    } else {
-      if(btn){ btn.disabled = false; btn.style.background = '#2563eb'; btn.textContent = 'Generate Tailored Resume'; }
-      if(loading) loading.style.display = 'none';
-    }
+    if(el){ el.textContent = ''; el.style.display = 'none'; }
   }
 
   document.getElementById('resume-generate-btn').addEventListener('click', function() {
     hideError();
+    var btn = document.getElementById('resume-generate-btn');
+    var spinner = document.getElementById('resume-spinner');
+    var btnText = document.getElementById('resume-btn-text');
     var resumeText = document.getElementById('resume-input').value.trim();
     var jobText = document.getElementById('jobpost-input').value.trim();
 
+    if(!resumeText && !jobText){
+      showError('Please paste both your resume and the job posting.');
+      return;
+    }
     if(!resumeText){
-      showError('Please paste your resume text before generating.');
+      showError('Please paste your resume in the left text area.');
       return;
     }
     if(!jobText){
-      showError('Please paste the job posting text before generating.');
+      showError('Please paste the job posting in the right text area.');
       return;
     }
 
-    setLoading(true);
-    document.getElementById('resume-output').style.display = 'none';
-    document.getElementById('resume-copy-confirm').style.display = 'none';
+    btn.disabled = true;
+    if(spinner) spinner.style.display = 'inline-block';
+    if(btnText) btnText.textContent = 'Analyzing...';
 
-    setTimeout(function() {
+    setTimeout(function(){
       try {
-        var analysis = analyzeKeywords(resumeText, jobText);
+        var result = buildProfessionalResume(resumeText, jobText);
 
-        renderBadges('matched-keywords', 'matched-empty', analysis.matched, '#15803d', '#f0fdf4');
-        renderBadges('missing-keywords', 'missing-empty', analysis.missing, '#dc2626', '#fef2f2');
+        // Display matched keywords
+        var matchedEl = document.getElementById('matched-keywords');
+        var matchedEmpty = document.getElementById('matched-empty');
+        if(matchedEl){
+          if(result.matched.length > 0){
+            matchedEl.innerHTML = result.matched.map(function(kw){
+              return '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;background:#dcfce7;color:#166534;margin:2px;">' + kw + '</span>';
+            }).join('');
+            if(matchedEmpty) matchedEmpty.style.display = 'none';
+          } else {
+            matchedEl.innerHTML = '';
+            if(matchedEmpty) matchedEmpty.style.display = 'block';
+          }
+        }
 
-        var tailored = buildResume(resumeText, jobText, analysis);
-        document.getElementById('tailored-resume-output').value = tailored;
-        document.getElementById('resume-output').style.display = 'block';
-        document.getElementById('resume-output').scrollIntoView({ behavior: 'smooth', block: 'start' });
-      } catch(e) {
-        showError('An error occurred during analysis. Please check your input and try again.');
+        // Display missing keywords
+        var missingEl = document.getElementById('missing-keywords');
+        var missingEmpty = document.getElementById('missing-empty');
+        if(missingEl){
+          if(result.missing.length > 0){
+            missingEl.innerHTML = result.missing.map(function(kw){
+              return '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;background:#fee2e2;color:#991b1b;margin:2px;">' + kw + '</span>';
+            }).join('');
+            if(missingEmpty) missingEmpty.style.display = 'none';
+          } else {
+            missingEl.innerHTML = '';
+            if(missingEmpty){ missingEmpty.textContent = 'All keywords matched'; missingEmpty.style.display = 'block'; }
+          }
+        }
+
+        // Display tailored resume
+        var outputEl = document.getElementById('tailored-resume-output');
+        if(outputEl){
+          outputEl.textContent = result.resume;
+        }
+
+        // Show output section
+        var outputSection = document.getElementById('resume-output');
+        if(outputSection) outputSection.style.display = 'block';
+
+        // Wire up copy button
+        var copyBtn = document.getElementById('resume-copy-btn');
+        if(copyBtn){
+          copyBtn.onclick = function(){
+            var text = document.getElementById('tailored-resume-output').textContent;
+            var confirmEl = document.getElementById('resume-copy-confirm');
+            if(navigator.clipboard && navigator.clipboard.writeText){
+              navigator.clipboard.writeText(text).then(function(){
+                if(confirmEl){ confirmEl.textContent = 'Copied to clipboard'; confirmEl.style.display = 'inline'; }
+                setTimeout(function(){ if(confirmEl) confirmEl.style.display = 'none'; }, 2500);
+              });
+            } else {
+              var ta = document.createElement('textarea');
+              ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+              document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+              document.body.removeChild(ta);
+              if(confirmEl){ confirmEl.textContent = 'Copied to clipboard'; confirmEl.style.display = 'inline'; }
+              setTimeout(function(){ if(confirmEl) confirmEl.style.display = 'none'; }, 2500);
+            }
+          };
+        }
+
+        outputSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      } catch(err) {
+        showError('Error generating resume: ' + err.message);
       }
-      setLoading(false);
-    }, 1500);
-  });
 
-  document.getElementById('resume-copy-btn').addEventListener('click', function() {
-    var ta = document.getElementById('tailored-resume-output');
-    var confirmEl = document.getElementById('resume-copy-confirm');
-    if(!ta.value) return;
-    if(navigator.clipboard && navigator.clipboard.writeText){
-      navigator.clipboard.writeText(ta.value).then(function(){
-        confirmEl.style.display = 'inline';
-        setTimeout(function(){ confirmEl.style.display = 'none'; }, 2200);
-      });
-    } else {
-      ta.select();
-      document.execCommand('copy');
-      confirmEl.style.display = 'inline';
-      setTimeout(function(){ confirmEl.style.display = 'none'; }, 2200);
-    }
+      btn.disabled = false;
+      if(spinner) spinner.style.display = 'none';
+      if(btnText) btnText.textContent = 'Generate Tailored Resume';
+    }, 1200);
   });
-
-  document.getElementById('resume-input').addEventListener('focus', function(){ this.style.borderColor = '#2563eb'; });
-  document.getElementById('resume-input').addEventListener('blur', function(){ this.style.borderColor = '#d1d5db'; });
-  document.getElementById('jobpost-input').addEventListener('focus', function(){ this.style.borderColor = '#2563eb'; });
-  document.getElementById('jobpost-input').addEventListener('blur', function(){ this.style.borderColor = '#d1d5db'; });
 })();
+
 </script>
 
       <div class="tab-panel" id="panel-coverletter">
@@ -1619,7 +3501,7 @@ function clExtractSpecialties(resumeText) {
 function clExtractCompany(jobText) {
   if (!jobText) return 'your facility';
   var patterns = [
-    /(?:at|with|for|join)\s+([A-Z][A-Za-z0-9&'.,\s-]{2,50}?)(?:\s*[-Ã¢ÂÂ|,]|\s+is\s|\s+are\s|\s*\n)/,
+    /(?:at|with|for|join)\s+([A-Z][A-Za-z0-9&'.,\s-]{2,50}?)(?:\s*[--|,]|\s+is\s|\s+are\s|\s*\n)/,
     /^([A-Z][A-Za-z0-9&'.,\s-]{2,60})\s*(?:is\s+(?:seeking|looking|hiring)|has\s+an)/m,
     /(?:Hospital|Medical Center|Health System|Healthcare|Clinic|Physicians|Nursing|Rehab|Center)[^\n]*/i,
     /Company[:\s]+([^\n]+)/i,
@@ -1966,6 +3848,25 @@ Thank you very much for your time. I look forward to hearing from you."</div>
   </div>
 
   <script>
+    function fuCopyText(elId, btnId) {
+      var text = document.getElementById(elId).innerText;
+      var btn = document.getElementById(btnId);
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(function(){
+          btn.textContent = 'Copied!';
+          btn.classList.add('copied');
+          setTimeout(function(){ btn.textContent = btn.id.indexOf('email') > -1 ? 'Copy Email Template' : 'Copy Phone Script'; btn.classList.remove('copied'); }, 2200);
+        });
+      } else {
+        var ta = document.createElement('textarea');
+        ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+        document.body.removeChild(ta);
+        btn.textContent = 'Copied!';
+        setTimeout(function(){ btn.textContent = btn.id.indexOf('email') > -1 ? 'Copy Email Template' : 'Copy Phone Script'; }, 2200);
+      }
+    }
+
     function fuLoadAllApps() {
       var apps = [];
       try { apps = JSON.parse(localStorage.getItem('jobApps')) || []; } catch(e) {}
@@ -1973,13 +3874,12 @@ Thank you very much for your time. I look forward to hearing from you."</div>
       if(!container) return;
       
       if(apps.length === 0){
-        container.innerHTML = '<div style="text-align:center;padding:40px 20px;color:#94a3b8;"><div style="font-size:28px;margin-bottom:10px;">ð</div><div style="font-size:15px;font-weight:600;">No Applications Yet</div><div style="font-size:13px;margin-top:4px;">Add applications in the Dashboard tab to track follow-ups here.</div></div>';
+        container.innerHTML = '<div style="text-align:center;padding:40px 20px;color:#94a3b8;"><div style="font-size:15px;font-weight:600;">No Applications Yet</div><div style="font-size:13px;margin-top:4px;">Add applications in the Dashboard tab to track follow-ups here.</div></div>';
         return;
       }
 
       var today = new Date();
       today.setHours(0,0,0,0);
-      var todayStr = today.toISOString().split('T')[0];
 
       // Sort: overdue first, then today, then future, then no date
       apps.sort(function(a,b){
@@ -2003,12 +3903,12 @@ Thank you very much for your time. I look forward to hearing from you."</div>
 
       apps.forEach(function(app, idx){
         var fuDate = app.followUpDate || '';
-        var sent = app.followUpSent || false;
+        var sent = (app.followUpSent === 'Yes' || app.followUpSent === true);
         var rowBg = '#fff';
         var statusBadge = '';
 
         if(sent){
-          statusBadge = '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;background:#dcfce7;color:#166534;">Sent â</span>';
+          statusBadge = '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;background:#dcfce7;color:#166534;">Sent</span>';
           rowBg = '#f8fdf9';
         } else if(!fuDate){
           statusBadge = '<span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;background:#f1f5f9;color:#94a3b8;">No Date Set</span>';
@@ -2035,7 +3935,7 @@ Thank you very much for your time. I look forward to hearing from you."</div>
           actionBtn = '<button onclick="fuMarkSent(' + idx + ')" style="padding:4px 12px;font-size:11px;border:none;background:#2563eb;color:#fff;border-radius:4px;cursor:pointer;font-weight:600;" onmouseover="this.style.background=\'#1d4ed8\'" onmouseout="this.style.background=\'#2563eb\'">Mark Sent</button>';
         }
 
-        var formattedApplied = app.dateApplied || 'N/A';
+        var formattedApplied = app.date ? fuFormatDate(app.date) : 'N/A';
         var formattedFU = fuDate ? fuFormatDate(fuDate) : 'Not set';
 
         html += '<tr style="background:' + rowBg + ';border-bottom:1px solid #f0f3f9;">';
@@ -2051,9 +3951,10 @@ Thank you very much for your time. I look forward to hearing from you."</div>
       html += '</tbody></table>';
 
       // Summary stats
-      var overdue = 0, dueToday = 0, upcoming = 0, sent = 0, noDate = 0;
+      var overdue = 0, dueToday = 0, upcoming = 0, sentCount = 0, noDate = 0;
       apps.forEach(function(app){
-        if(app.followUpSent){ sent++; return; }
+        var isSent = (app.followUpSent === 'Yes' || app.followUpSent === true);
+        if(isSent){ sentCount++; return; }
         if(!app.followUpDate){ noDate++; return; }
         var fDate = new Date(app.followUpDate + 'T00:00:00');
         var diff = Math.floor((fDate - today) / (1000*60*60*24));
@@ -2066,7 +3967,7 @@ Thank you very much for your time. I look forward to hearing from you."</div>
       summary += '<div style="flex:1;min-width:100px;background:#fef2f2;border-radius:8px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:700;color:#991b1b;">' + overdue + '</div><div style="font-size:11px;color:#b91c1c;font-weight:600;">Overdue</div></div>';
       summary += '<div style="flex:1;min-width:100px;background:#fffbeb;border-radius:8px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:700;color:#92400e;">' + dueToday + '</div><div style="font-size:11px;color:#b45309;font-weight:600;">Due Today</div></div>';
       summary += '<div style="flex:1;min-width:100px;background:#eff6ff;border-radius:8px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:700;color:#1d4ed8;">' + upcoming + '</div><div style="font-size:11px;color:#2563eb;font-weight:600;">Upcoming</div></div>';
-      summary += '<div style="flex:1;min-width:100px;background:#f0fdf4;border-radius:8px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:700;color:#166534;">' + sent + '</div><div style="font-size:11px;color:#16a34a;font-weight:600;">Sent</div></div>';
+      summary += '<div style="flex:1;min-width:100px;background:#f0fdf4;border-radius:8px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:700;color:#166534;">' + sentCount + '</div><div style="font-size:11px;color:#16a34a;font-weight:600;">Sent</div></div>';
       summary += '</div>';
 
       container.innerHTML = summary + html;
@@ -2084,11 +3985,10 @@ Thank you very much for your time. I look forward to hearing from you."</div>
       var apps = [];
       try { apps = JSON.parse(localStorage.getItem('jobApps')) || []; } catch(e) {}
       if(apps[idx]){
-        apps[idx].followUpSent = true;
+        apps[idx].followUpSent = 'Yes';
         localStorage.setItem('jobApps', JSON.stringify(apps));
         fuLoadAllApps();
-        // Trigger dashboard refresh if it exists
-        if(typeof loadApps === 'function') loadApps();
+        if(typeof refreshDashboard === 'function') refreshDashboard();
       }
     }
 
@@ -2096,31 +3996,32 @@ Thank you very much for your time. I look forward to hearing from you."</div>
       var apps = [];
       try { apps = JSON.parse(localStorage.getItem('jobApps')) || []; } catch(e) {}
       if(apps[idx]){
-        apps[idx].followUpSent = false;
+        apps[idx].followUpSent = 'No';
         localStorage.setItem('jobApps', JSON.stringify(apps));
         fuLoadAllApps();
-        if(typeof loadApps === 'function') loadApps();
+        if(typeof refreshDashboard === 'function') refreshDashboard();
       }
     }
 
     // Listen for tab switches to refresh data
     document.addEventListener('click', function(e){
-      if(e.target && e.target.getAttribute && e.target.getAttribute('data-tab') === 'follow-up'){
+      if(e.target && e.target.getAttribute && (e.target.getAttribute('data-tab') === 'followup' || e.target.getAttribute('data-tab') === 'follow-up')){
         setTimeout(fuLoadAllApps, 100);
       }
     });
 
-    // Also listen for storage events (cross-tab sync)
+    // Listen for storage events (cross-tab sync)
     window.addEventListener('storage', function(e){
       if(e.key === 'jobApps') fuLoadAllApps();
     });
 
-    // Auto-initialize when page loads
+    // Auto-initialize
     if(document.readyState === 'loading'){
       document.addEventListener('DOMContentLoaded', fuLoadAllApps);
     } else {
       fuLoadAllApps();
     }
+
 </script>
 </div>
 
