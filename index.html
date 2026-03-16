@@ -418,6 +418,56 @@
         font-size: 19px;
       }
     }
+  
+    /* ---- DOCUMENT OUTPUT STYLES ---- */
+    .doc-page {
+      background: #fff;
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 56px 64px;
+      box-shadow: 0 0 0 1px #d1d5db, 0 4px 24px rgba(0,0,0,0.08);
+      border-radius: 2px;
+      font-family: 'Georgia', 'Times New Roman', serif;
+      font-size: 14px;
+      line-height: 1.55;
+      color: #1a1a1a;
+      min-height: 600px;
+      position: relative;
+    }
+    .doc-page:focus { outline: none; }
+    .doc-page [contenteditable]:hover { background: #f8f9ff; border-radius: 2px; }
+    .doc-page [contenteditable]:focus { background: #f0f4ff; outline: 1px dashed #93b4f5; border-radius: 2px; }
+    .doc-name { font-size: 22px; font-weight: 700; text-align: center; letter-spacing: 0.03em; text-transform: uppercase; margin-bottom: 4px; font-family: 'Georgia', serif; }
+    .doc-contact { text-align: center; font-size: 12px; color: #444; margin-bottom: 16px; font-family: system-ui, sans-serif; }
+    .doc-section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 1.5px solid #1a1a1a; padding-bottom: 3px; margin: 18px 0 10px 0; color: #1a1a1a; }
+    .doc-summary { font-size: 13.5px; line-height: 1.6; margin-bottom: 6px; }
+    .doc-comp-grid { display: flex; flex-wrap: wrap; gap: 0; margin-bottom: 4px; }
+    .doc-comp-item { width: 33.33%; font-size: 12.5px; padding: 2px 0; box-sizing: border-box; }
+    .doc-exp-header { font-weight: 700; font-size: 14px; margin-bottom: 1px; }
+    .doc-exp-meta { font-size: 12.5px; color: #555; font-style: italic; margin-bottom: 5px; font-family: system-ui, sans-serif; }
+    .doc-bullets { padding-left: 20px; margin: 4px 0 12px 0; }
+    .doc-bullets li { font-size: 13px; line-height: 1.5; margin-bottom: 3px; }
+    .doc-edu-item { margin-bottom: 6px; }
+    .doc-edu-title { font-weight: 700; font-size: 13.5px; }
+    .doc-edu-detail { font-size: 12.5px; color: #555; font-family: system-ui, sans-serif; }
+    .doc-toolbar { display: flex; gap: 10px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
+    .doc-toolbar-btn { background: #1e293b; color: #fff; border: none; border-radius: 6px; padding: 9px 18px; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+    .doc-toolbar-btn:hover { background: #334155; }
+    .doc-toolbar-btn.secondary { background: #f1f5f9; color: #374151; border: 1px solid #cbd5e1; }
+    .doc-toolbar-btn.secondary:hover { background: #e2e8f0; }
+    .doc-toolbar-hint { font-size: 12px; color: #94a3b8; font-style: italic; }
+    .doc-letter-date { font-size: 13.5px; margin-bottom: 20px; }
+    .doc-letter-recipient { font-size: 13.5px; margin-bottom: 20px; line-height: 1.6; }
+    .doc-letter-salutation { font-size: 13.5px; margin-bottom: 14px; }
+    .doc-letter-body p { font-size: 13.5px; line-height: 1.7; margin-bottom: 14px; }
+    .doc-letter-closing { font-size: 13.5px; margin-top: 20px; }
+    .doc-letter-sig { font-size: 13.5px; font-weight: 700; margin-top: 24px; }
+    @media print {
+      body * { visibility: hidden; }
+      .doc-page, .doc-page * { visibility: visible; }
+      .doc-page { position: fixed; left: 0; top: 0; width: 100%; margin: 0; padding: 48px 56px; box-shadow: none; border: none; }
+      .doc-toolbar { display: none !important; }
+    }
   </style>
 </head>
 <body>
@@ -1617,11 +1667,12 @@ render();
   <!-- Tailored Resume -->
   <div class="rt-output-card">
     <div class="rt-section-header">Tailored Resume</div>
-    <pre id="tailored-resume-output"></pre>
-    <div class="rt-copy-row">
-      <button type="button" id="resume-copy-btn">Copy to Clipboard</button>
-      <span id="resume-copy-confirm">Copied!</span>
+    <div class="doc-toolbar">
+      <button type="button" id="resume-copy-btn" class="doc-toolbar-btn secondary">Copy to Clipboard</button>
+      <button type="button" id="resume-pdf-btn" class="doc-toolbar-btn">Download as PDF</button>
+      <span class="doc-toolbar-hint">Click any text in the document to edit before downloading.</span>
     </div>
+    <div id="tailored-resume-output" class="doc-page"></div>
   </div>
 
 </div>
@@ -1841,52 +1892,24 @@ function centerText(text, width){
   return repeatChar(' ', pad) + text;
 }
 
-function buildResumeText(data, matchedKw){
-  var lines = [];
-  var WIDTH = 80;
-  var SEP = repeatChar('=', WIDTH);
-  var SEP2 = repeatChar('-', WIDTH);
-
-  // HEADER
+function buildResumeHTML(data, matchedKw){
+  var h = '';
   var nameStr = data.name || 'Professional';
-  lines.push(centerText(nameStr.toUpperCase(), WIDTH));
+  h += '<div class="doc-name" contenteditable="true">' + esc(nameStr) + '</div>';
   var contactParts = [];
-  if(data.email) contactParts.push(data.email);
-  if(data.phone) contactParts.push(data.phone);
-  if(data.location) contactParts.push(data.location);
-  if(data.linkedin) contactParts.push(data.linkedin);
+  if(data.email) contactParts.push(esc(data.email));
+  if(data.phone) contactParts.push(esc(data.phone));
+  if(data.location) contactParts.push(esc(data.location));
+  if(data.linkedin) contactParts.push(esc(data.linkedin));
   if(contactParts.length > 0){
-    lines.push(centerText(contactParts.join('  |  '), WIDTH));
+    h += '<div class="doc-contact" contenteditable="true">' + contactParts.join('  |  ') + '</div>';
   }
-  lines.push(SEP);
-  lines.push('');
-
-  // PROFESSIONAL SUMMARY
-  lines.push('PROFESSIONAL SUMMARY');
-  lines.push(SEP2);
   var summaryText = data.summary;
   if(!summaryText || summaryText.length === 0){
     summaryText = autoSummary(data.name, data.yearsExp, data.skills, data.targetTitle);
   }
-  // word wrap at WIDTH
-  var words = summaryText.split(' ');
-  var line = '';
-  for(var wi = 0; wi < words.length; wi++){
-    var word = words[wi];
-    if(!word) continue;
-    if(line.length === 0){
-      line = word;
-    } else if(line.length + 1 + word.length <= WIDTH){
-      line = line + ' ' + word;
-    } else {
-      lines.push(line);
-      line = word;
-    }
-  }
-  if(line.length > 0) lines.push(line);
-  lines.push('');
-
-  // CORE COMPETENCIES
+  h += '<div class="doc-section-title">Professional Summary</div>';
+  h += '<div class="doc-summary" contenteditable="true">' + esc(summaryText) + '</div>';
   var coreSkills = [];
   if(data.skills){
     var rawSkills = data.skills.split(',');
@@ -1895,133 +1918,91 @@ function buildResumeText(data, matchedKw){
       if(sk) coreSkills.push(sk);
     }
   }
-  // add matched keywords not already in coreSkills
   for(var ki = 0; ki < matchedKw.length; ki++){
     var kwLower = matchedKw[ki].toLowerCase();
     var found = false;
     for(var ci = 0; ci < coreSkills.length; ci++){
-      if(coreSkills[ci].toLowerCase() === kwLower){
-        found = true;
-        break;
-      }
+      if(coreSkills[ci].toLowerCase() === kwLower){ found = true; break; }
     }
     if(!found) coreSkills.push(matchedKw[ki]);
   }
   coreSkills = dedupe(coreSkills);
-
   if(coreSkills.length > 0){
-    lines.push('CORE COMPETENCIES');
-    lines.push(SEP2);
-    var coreRow = [];
+    h += '<div class="doc-section-title">Core Competencies</div>';
+    h += '<div class="doc-comp-grid" contenteditable="true">';
     for(var csi = 0; csi < coreSkills.length; csi++){
-      coreRow.push(coreSkills[csi]);
-      if(coreRow.length === 3){
-        lines.push(coreRow.join(' | '));
-        coreRow = [];
-      }
+      h += '<div class="doc-comp-item">' + esc(coreSkills[csi]) + '</div>';
     }
-    if(coreRow.length > 0) lines.push(coreRow.join(' | '));
-    lines.push('');
+    h += '</div>';
   }
-
-  // PROFESSIONAL EXPERIENCE
   if(data.expEntries && data.expEntries.length > 0){
-    lines.push('PROFESSIONAL EXPERIENCE');
-    lines.push(SEP2);
+    h += '<div class="doc-section-title">Professional Experience</div>';
     for(var ei = 0; ei < data.expEntries.length; ei++){
       var exp = data.expEntries[ei];
       if(!exp.title && !exp.employer) continue;
       var expHeader = '';
-      if(exp.title && exp.employer){
-        expHeader = exp.title + ' - ' + exp.employer;
-      } else if(exp.title){
-        expHeader = exp.title;
-      } else {
-        expHeader = exp.employer;
-      }
-      lines.push(expHeader);
+      if(exp.title && exp.employer) expHeader = esc(exp.title) + ' - ' + esc(exp.employer);
+      else if(exp.title) expHeader = esc(exp.title);
+      else expHeader = esc(exp.employer);
+      h += '<div class="doc-exp-header" contenteditable="true">' + expHeader + '</div>';
       var dateLine = '';
-      if(exp.start || exp.end){
-        dateLine = (exp.start || '') + ' - ' + (exp.end || 'Present');
-      }
-      if(exp.location){
-        dateLine = dateLine ? dateLine + '  |  ' + exp.location : exp.location;
-      }
-      if(dateLine) lines.push(dateLine);
+      if(exp.start || exp.end) dateLine = esc(exp.start || '') + ' - ' + esc(exp.end || 'Present');
+      if(exp.location) dateLine = dateLine ? dateLine + '  |  ' + esc(exp.location) : esc(exp.location);
+      if(dateLine) h += '<div class="doc-exp-meta" contenteditable="true">' + dateLine + '</div>';
       if(exp.bullets){
         var bulletLines = exp.bullets.split('\n');
+        var hasBullets = false;
+        var bhtml = '<ul class="doc-bullets" contenteditable="true">';
         for(var bi = 0; bi < bulletLines.length; bi++){
           var bl = bulletLines[bi].trim();
           if(bl){
-            if(bl.charAt(0) !== '-') bl = '- ' + bl;
-            lines.push(bl);
+            if(bl.charAt(0) === '-') bl = bl.substring(1).trim();
+            bhtml += '<li>' + esc(bl) + '</li>';
+            hasBullets = true;
           }
         }
+        bhtml += '</ul>';
+        if(hasBullets) h += bhtml;
       }
-      lines.push('');
     }
   }
-
-  // EDUCATION AND CERTIFICATIONS
   var hasEdu = data.eduEntries && data.eduEntries.length > 0;
   var hasCerts = data.certs && data.certs.trim().length > 0;
   if(hasEdu || hasCerts){
-    lines.push('EDUCATION AND CERTIFICATIONS');
-    lines.push(SEP2);
+    h += '<div class="doc-section-title">Education & Certifications</div>';
     if(hasEdu){
-      for(var edi = 0; edi < data.eduEntries.length; edi++){
-        var edu = data.eduEntries[edi];
+      for(var ej = 0; ej < data.eduEntries.length; ej++){
+        var edu = data.eduEntries[ej];
         if(!edu.degree && !edu.school) continue;
         var eduLine = '';
-        if(edu.degree) eduLine += edu.degree;
-        if(edu.school) eduLine += (eduLine ? ' - ' : '') + edu.school;
-        if(edu.year) eduLine += (eduLine ? ', ' : '') + edu.year;
-        if(edu.location) eduLine += (eduLine ? ' | ' : '') + edu.location;
-        if(eduLine) lines.push(eduLine);
+        if(edu.degree) eduLine += esc(edu.degree);
+        if(edu.school) eduLine += (eduLine ? ' - ' : '') + esc(edu.school);
+        h += '<div class="doc-edu-item" contenteditable="true"><div class="doc-edu-title">' + eduLine + '</div>';
+        var eduDetail = '';
+        if(edu.year) eduDetail += esc(edu.year);
+        if(edu.location) eduDetail += (eduDetail ? '  |  ' : '') + esc(edu.location);
+        if(eduDetail) h += '<div class="doc-edu-detail">' + eduDetail + '</div>';
+        h += '</div>';
       }
     }
     if(hasCerts){
       var certLines = data.certs.split('\n');
-      for(var certi = 0; certi < certLines.length; certi++){
-        var cert = certLines[certi].trim();
-        if(cert) lines.push(cert);
+      for(var ck = 0; ck < certLines.length; ck++){
+        var cl2 = certLines[ck].trim();
+        if(cl2) h += '<div class="doc-edu-item" contenteditable="true"><div class="doc-edu-title">' + esc(cl2) + '</div></div>';
       }
     }
-    lines.push('');
   }
+  if(data.skills && data.skills.trim().length > 0){
+    h += '<div class="doc-section-title">Additional Skills</div>';
+    h += '<div class="doc-summary" contenteditable="true">' + esc(data.skills) + '</div>';
+  }
+  return h;
+}
 
-  // ADDITIONAL SKILLS - skills not already shown in core competencies
-  var coreSet = {};
-  for(var csi2 = 0; csi2 < coreSkills.length; csi2++){
-    coreSet[coreSkills[csi2].toLowerCase()] = true;
-  }
-  var additionalSkills = [];
-  if(data.skills){
-    var rawSkills2 = data.skills.split(',');
-    for(var asi = 0; asi < rawSkills2.length; asi++){
-      var ask = rawSkills2[asi].trim();
-      if(ask && !coreSet[ask.toLowerCase()]){
-        additionalSkills.push(ask);
-      }
-    }
-  }
-  additionalSkills = dedupe(additionalSkills);
-  if(additionalSkills.length > 0){
-    lines.push('ADDITIONAL SKILLS');
-    lines.push(SEP2);
-    var addRow = [];
-    for(var addi = 0; addi < additionalSkills.length; addi++){
-      addRow.push(additionalSkills[addi]);
-      if(addRow.length === 3){
-        lines.push(addRow.join(' | '));
-        addRow = [];
-      }
-    }
-    if(addRow.length > 0) lines.push(addRow.join(' | '));
-    lines.push('');
-  }
-
-  return lines.join('\n');
+function esc(s){
+  if(!s) return '';
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 function readFormData(){
@@ -2134,9 +2115,9 @@ if(generateBtn){
     }
     var userText = buildUserText(data);
     var kwResult = extractMatchedKeywords(data.jobPosting, userText);
-    var resumeText = buildResumeText(data, kwResult.matched);
+    var resumeHTML = buildResumeHTML(data, kwResult.matched);
     var outputEl = document.getElementById('tailored-resume-output');
-    if(outputEl) outputEl.textContent = resumeText;
+    if(outputEl) outputEl.innerHTML = resumeHTML;
     var outputContainer = document.getElementById('resume-output');
     if(outputContainer) outputContainer.style.display = 'block';
     displayBadges('matched-keywords', 'matched-empty', kwResult.matched, '#2e7d32');
@@ -2149,7 +2130,7 @@ if(copyBtn){
   copyBtn.addEventListener('click', function(){
     var outputEl = document.getElementById('tailored-resume-output');
     if(!outputEl) return;
-    var text = outputEl.textContent || outputEl.innerText || '';
+    var text = outputEl.innerText || outputEl.textContent || '';
     if(!text) return;
     if(navigator.clipboard && navigator.clipboard.writeText){
       navigator.clipboard.writeText(text).then(function(){
@@ -2188,6 +2169,16 @@ function fallbackCopy(text, btn){
   document.body.removeChild(ta);
 }
 
+
+var pdfBtn = document.getElementById('resume-pdf-btn');
+if(pdfBtn){
+  pdfBtn.addEventListener('click', function(){
+    var el = document.getElementById('tailored-resume-output');
+    if(!el || !el.innerHTML) return;
+    window.print();
+  });
+}
+
 })();
 </script>
 
@@ -2221,12 +2212,13 @@ function fallbackCopy(text, btn){
     <div id="cl-error" style="display:none;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px 16px;color:#b91c1c;font-size:0.85rem;margin-bottom:20px"></div>
 
     <div id="cl-output-wrapper" style="display:none">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-        <span style="font-size:0.8rem;font-weight:600;color:#374151;text-transform:uppercase;letter-spacing:0.05em">Generated Cover Letter</span>
-        <button id="cl-copy-btn" onclick="clCopyToClipboard()" style="background:#f1f5f9;color:#374151;border:1px solid #cbd5e1;border-radius:6px;padding:6px 16px;font-size:0.8rem;font-weight:600;cursor:pointer;transition:background 0.15s" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">Copy to Clipboard</button>
+      <div class="doc-toolbar">
+        <button id="cl-copy-btn" onclick="clCopyToClipboard()" class="doc-toolbar-btn secondary">Copy to Clipboard</button>
+        <button id="cl-pdf-btn" onclick="window.print()" class="doc-toolbar-btn">Download as PDF</button>
+        <span class="doc-toolbar-hint">Click any text in the document to edit before downloading.</span>
       </div>
-      <div id="cl-card" style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:36px 40px;box-shadow:0 1px 4px rgba(0,0,0,0.06);font-family:'Georgia',serif">
-        <div id="cl-letter-text" style="font-size:0.92rem;line-height:1.8;color:#1e293b;white-space:pre-wrap;word-break:break-word"></div>
+      <div id="cl-card" class="doc-page">
+        <div id="cl-letter-text" contenteditable="true" style="min-height:400px"></div>
       </div>
     </div>
 
@@ -2245,6 +2237,27 @@ function fallbackCopy(text, btn){
 
 <script>
 window._clLoading = false;
+
+
+function clFormatHTML(text){
+  if(!text) return '';
+  var lines = text.split('\n');
+  var h = '';
+  var inBody = false;
+  for(var i = 0; i < lines.length; i++){
+    var line = lines[i].trim();
+    if(!line){ if(inBody) h += '</div>'; h += '<br>'; inBody = false; continue; }
+    if(i < 5 && !inBody){
+      h += '<div contenteditable="true" style="margin-bottom:2px;">' + line.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>';
+    } else {
+      if(!inBody){ h += '<div class="doc-letter-body" contenteditable="true"><p>'; inBody = true; }
+      else { h += ' '; }
+      h += line.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+  }
+  if(inBody) h += '</p></div>';
+  return h;
+}
 
 function clExtractName(resumeText) {
   if (!resumeText) return 'Your Name';
@@ -2479,7 +2492,7 @@ function generateCoverLetter() {
   setTimeout(function(){
     try{
       var letter=clBuildLetter(resume,job,notes);
-      document.getElementById('cl-letter-text').textContent=letter;
+      document.getElementById('cl-letter-text').innerHTML=clFormatHTML(letter);
       document.getElementById('cl-loading').style.display='none';
       document.getElementById('cl-output-wrapper').style.display='block';
       document.getElementById('cl-output-wrapper').scrollIntoView({behavior:'smooth',block:'start'});
@@ -2496,7 +2509,7 @@ function generateCoverLetter() {
 }
 
 function clCopyToClipboard() {
-  var text=document.getElementById('cl-letter-text').textContent;
+  var text=document.getElementById('cl-letter-text').innerText||document.getElementById('cl-letter-text').textContent;
   var copyBtn=document.getElementById('cl-copy-btn');
   if(!text) return;
   if(navigator.clipboard && navigator.clipboard.writeText){
