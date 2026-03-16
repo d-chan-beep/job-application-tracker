@@ -1815,9 +1815,13 @@ if(addEduBtn){
 
 document.addEventListener('click', function(e){
   if(e.target && e.target.className && e.target.className.indexOf('rt-remove-btn') !== -1){
-    var entry = e.target.parentNode;
-    if(entry && entry.parentNode){
-      entry.parentNode.removeChild(entry);
+    var node = e.target;
+    while(node && node.parentNode){
+      if(node.className && (node.className.indexOf('rt-exp-entry') !== -1 || node.className.indexOf('rt-edu-entry') !== -1)){
+        node.parentNode.removeChild(node);
+        return;
+      }
+      node = node.parentNode;
     }
   }
 });
